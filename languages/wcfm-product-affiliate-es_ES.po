@@ -1,0 +1,140 @@
+# Translation file for WCFM Product Affiliate
+# Copyright (C) 2025 CiudadVirtual
+# This file is distributed under the same license as the WCFM Product Affiliate package.
+msgid ""
+msgstr ""
+"Project-Id-Version: WCFM Product Affiliate 1.0.0\n"
+"Report-Msgid-Bugs-To: https://ciudadvirtual.app\n"
+"POT-Creation-Date: 2025-10-19 20:00+0000\n"
+"PO-Revision-Date: 2025-10-19 20:00+0000\n"
+"Last-Translator: CiudadVirtual <admin@ciudadvirtual.app>\n"
+"Language-Team: Spanish\n"
+"Language: es_ES\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "Affiliate Products"
+msgstr "Productos Afiliados"
+
+msgid "Store Origin"
+msgstr "Tienda de Origen"
+
+msgid "Unauthorized"
+msgstr "No autorizado"
+
+msgid "Add this product to your store?"
+msgstr "¿Añadir este producto a tu tienda?"
+
+msgid "Remove this product from your store?"
+msgstr "¿Eliminar este producto de tu tienda?"
+
+msgid "Product added successfully!"
+msgstr "¡Producto añadido correctamente!"
+
+msgid "Product removed successfully!"
+msgstr "¡Producto eliminado correctamente!"
+
+msgid "An error occurred. Please try again."
+msgstr "Ocurrió un error. Por favor intenta de nuevo."
+
+msgid "Invalid product"
+msgstr "Producto inválido"
+
+msgid "Failed to add product"
+msgstr "Error al añadir el producto"
+
+msgid "Failed to remove product"
+msgstr "Error al eliminar el producto"
+
+msgid "No products selected"
+msgstr "No hay productos seleccionados"
+
+msgid "%d products added successfully!"
+msgstr "¡%d productos añadidos correctamente!"
+
+msgid "Sell This Product"
+msgstr "Vender Este Producto"
+
+msgid "Remove from My Store"
+msgstr "Quitar de Mi Tienda"
+
+msgid "Your Affiliate Stats"
+msgstr "Tus Estadísticas de Afiliación"
+
+msgid "Active Products"
+msgstr "Productos Activos"
+
+msgid "Total Sales"
+msgstr "Ventas Totales"
+
+msgid "Total Earnings"
+msgstr "Ganancias Totales"
+
+msgid "My Affiliate Products"
+msgstr "Mis Productos Afiliados"
+
+msgid "Product"
+msgstr "Producto"
+
+msgid "Owner"
+msgstr "Propietario"
+
+msgid "Commission"
+msgstr "Comisión"
+
+msgid "Status"
+msgstr "Estado"
+
+msgid "Added"
+msgstr "Añadido"
+
+msgid "Actions"
+msgstr "Acciones"
+
+msgid "Product not found"
+msgstr "Producto no encontrado"
+
+msgid "Available Products to Sell"
+msgstr "Productos Disponibles para Vender"
+
+msgid "Browse and add products from other vendors to sell in your store."
+msgstr "Navega y añade productos de otros vendedores para vender en tu tienda."
+
+msgid "Price"
+msgstr "Precio"
+
+msgid "Add Selected Products"
+msgstr "Añadir Productos Seleccionados"
+
+msgid "No products available at the moment."
+msgstr "No hay productos disponibles en este momento."
+
+msgid "Add to My Store"
+msgstr "Añadir a Mi Tienda"
+
+msgid "Remove"
+msgstr "Eliminar"
+
+msgid "Enable Affiliate System"
+msgstr "Activar Sistema de Afiliación"
+
+msgid "Allow vendors to sell other vendors products as affiliates."
+msgstr "Permitir a los vendedores vender productos de otros vendedores como afiliados."
+
+msgid "Default Affiliate Commission (%)"
+msgstr "Comisión de Afiliado por Defecto (%)"
+
+msgid "Default commission rate for affiliate vendors (percentage of sale)."
+msgstr "Tasa de comisión por defecto para vendedores afiliados (porcentaje de venta)."
+
+msgid "Disable Product Clone"
+msgstr "Desactivar Clonación de Productos"
+
+msgid "Disable the original product multivendor clone functionality."
+msgstr "Desactivar la funcionalidad original de clonación multivendedor de productos."
+
+msgid "Product Affiliate Settings"
+msgstr "Configuración de Afiliación de Productos"
+
