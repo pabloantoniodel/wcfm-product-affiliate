@@ -63,7 +63,7 @@ class WCFM_Affiliate_Frontend {
         add_action('wp_ajax_wcfm_affiliate_hide_instructions', array($this, 'ajax_hide_instructions'));
         
         // Add affiliate products to vendor store
-        add_action('pre_get_posts', array($this, 'add_affiliates_to_store_query'), 100);
+        add_action('pre_get_posts', array($this, 'add_affiliates_to_store_query'), 999);
         
         // Add affiliate reference to product links in store
         add_filter('post_link', array($this, 'add_affiliate_ref_to_product_link'), 10, 2);
@@ -447,6 +447,20 @@ class WCFM_Affiliate_Frontend {
         
         error_log('🔍 Affiliate Query: Productos afiliados encontrados: ' . count($affiliates));
         
+        // Si no hay afiliados, NO hacer nada - dejar que WCFM maneje normalmente
+        if (empty($affiliates)) {
+            error_log('✅ Affiliate Query: Sin afiliados, dejando query sin modificar (solo productos propios por author_name)');
+            return;
+        }
+        
+        // Extraer IDs de productos afiliados
+        $affiliate_product_ids = array();
+        foreach ($affiliates as $affiliate) {
+            $affiliate_product_ids[] = $affiliate->product_id;
+        }
+        
+        error_log('🔍 Affiliate Query: Productos afiliados: ' . count($affiliate_product_ids));
+        
         // Obtener productos propios del vendedor
         $own_products = get_posts(array(
             'post_type' => 'product',
@@ -458,42 +472,28 @@ class WCFM_Affiliate_Frontend {
         
         error_log('🔍 Affiliate Query: Productos propios: ' . count($own_products));
         
-        // Si no hay afiliados, dejar que WooCommerce use el filtro normal de autor
-        if (empty($affiliates)) {
-            error_log('✅ Affiliate Query: Sin afiliados, usando solo productos propios');
-            return;
-        }
-        
-        // Extraer IDs de productos afiliados
-        $affiliate_product_ids = array();
-        foreach ($affiliates as $affiliate) {
-            $affiliate_product_ids[] = $affiliate->product_id;
-        }
-        
         // Combinar productos propios + afiliados
         $all_product_ids = array_merge($own_products, $affiliate_product_ids);
         
-        error_log('✅ Affiliate Query: Total productos (propios + afiliados): ' . count($all_product_ids));
-        error_log('   - Propios: ' . count($own_products));
-        error_log('   - Afiliados: ' . count($affiliate_product_ids));
+        // Validar que tengamos productos
+        if (empty($all_product_ids)) {
+            error_log('❌ Affiliate Query: Array vacío después de combinar, abortando');
+            return;
+        }
+        
+        error_log('✅ Affiliate Query: Total productos a mostrar: ' . count($all_product_ids));
         error_log('   - IDs: ' . implode(', ', array_slice($all_product_ids, 0, 10)));
         
-        // Aplicar a la query - LIMPIAR TODOS LOS FILTROS DE AUTOR PRIMERO
-        if (!empty($all_product_ids)) {
-            // Limpiar completamente los filtros de autor
-            $query->set('author', '');
-            $query->set('author_name', '');
-            $query->set('author__in', array());
-            $query->set('author__not_in', array());
-            
-            // Ahora aplicar nuestro filtro de productos
-            $query->set('post__in', $all_product_ids);
-            
-            // Asegurar que no haya conflictos con post__not_in
-            $query->set('post__not_in', array());
-            
-            error_log('✅ Filtros de autor limpiados, post__in aplicado con ' . count($all_product_ids) . ' productos');
-        }
+        // APLICAR post__in con TODOS los productos (propios + afiliados)
+        $query->set('post__in', $all_product_ids);
+        
+        // LIMPIAR author_name porque post__in ya incluye los productos propios
+        // Si dejamos author_name, WordPress hace AND y filtra solo productos del autor
+        // que estén en post__in, eliminando los afiliados
+        $query->set('author_name', '');
+        $query->set('author', '');
+        
+        error_log('✅ post__in aplicado, author_name limpiado - Prioridad 999');
     }
     
     /**
