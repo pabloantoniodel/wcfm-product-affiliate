@@ -493,7 +493,22 @@ class WCFM_Affiliate_Frontend {
         $query->set('author_name', '');
         $query->set('author', '');
         
-        error_log('✅ post__in aplicado, author_name limpiado - Prioridad 999');
+        // LIMPIAR tax_query para evitar que "exclude-from-catalog" oculte productos
+        $tax_query = $query->get('tax_query');
+        if (is_array($tax_query)) {
+            // Filtrar para eliminar la exclusión de catálogo
+            $filtered_tax_query = array();
+            foreach ($tax_query as $key => $tax) {
+                if (is_array($tax) && isset($tax['taxonomy']) && $tax['taxonomy'] === 'product_visibility') {
+                    error_log('🔍 Eliminando filtro product_visibility que causa NOT IN');
+                    continue; // Saltar este filtro
+                }
+                $filtered_tax_query[$key] = $tax;
+            }
+            $query->set('tax_query', $filtered_tax_query);
+        }
+        
+        error_log('✅ post__in aplicado, author_name limpiado, tax_query filtrado - Prioridad 999');
     }
     
     /**
