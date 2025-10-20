@@ -476,12 +476,23 @@ class WCFM_Affiliate_Frontend {
         error_log('✅ Affiliate Query: Total productos (propios + afiliados): ' . count($all_product_ids));
         error_log('   - Propios: ' . count($own_products));
         error_log('   - Afiliados: ' . count($affiliate_product_ids));
+        error_log('   - IDs: ' . implode(', ', array_slice($all_product_ids, 0, 10)));
         
-        // Aplicar a la query
+        // Aplicar a la query - LIMPIAR TODOS LOS FILTROS DE AUTOR PRIMERO
         if (!empty($all_product_ids)) {
+            // Limpiar completamente los filtros de autor
+            $query->set('author', '');
+            $query->set('author_name', '');
+            $query->set('author__in', array());
+            $query->set('author__not_in', array());
+            
+            // Ahora aplicar nuestro filtro de productos
             $query->set('post__in', $all_product_ids);
-            $query->set('author_name', ''); // Limpiar filtro de autor
-            $query->set('author', ''); // También limpiar author por ID
+            
+            // Asegurar que no haya conflictos con post__not_in
+            $query->set('post__not_in', array());
+            
+            error_log('✅ Filtros de autor limpiados, post__in aplicado con ' . count($all_product_ids) . ' productos');
         }
     }
     
