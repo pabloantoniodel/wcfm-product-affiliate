@@ -65,6 +65,9 @@ class WCFM_Affiliate_Frontend {
         // Add affiliate products to vendor store
         add_action('pre_get_posts', array($this, 'add_affiliates_to_store_query'), 999);
         
+        // Log final results after query
+        add_filter('the_posts', array($this, 'log_final_posts'), 10, 2);
+        
         // Add affiliate reference to product links in store
         add_filter('post_link', array($this, 'add_affiliate_ref_to_product_link'), 10, 2);
         add_filter('woocommerce_loop_product_link', array($this, 'add_affiliate_ref_to_loop_link'), 10, 2);
@@ -508,7 +511,44 @@ class WCFM_Affiliate_Frontend {
             $query->set('tax_query', $filtered_tax_query);
         }
         
+        // LOG DETALLADO DE LA QUERY
         error_log('✅ post__in aplicado, author_name limpiado, tax_query filtrado - Prioridad 999');
+        error_log('🔍 Query vars finales:');
+        error_log('   - post_type: ' . $query->get('post_type'));
+        error_log('   - post__in: ' . implode(',', $query->get('post__in')));
+        error_log('   - author: ' . $query->get('author'));
+        error_log('   - author_name: ' . $query->get('author_name'));
+        error_log('   - posts_per_page: ' . $query->get('posts_per_page'));
+        error_log('   - meta_query: ' . print_r($query->get('meta_query'), true));
+        error_log('   - tax_query: ' . print_r($query->get('tax_query'), true));
+    }
+    
+    /**
+     * Log final posts results to debug filtering
+     */
+    public function log_final_posts($posts, $query) {
+        // Solo en la tienda del vendedor
+        if (!function_exists('wcfm_is_store_page') || !wcfm_is_store_page()) {
+            return $posts;
+        }
+        
+        // Solo en query principal de productos
+        if (!$query->is_main_query() || $query->get('post_type') !== 'product') {
+            return $posts;
+        }
+        
+        error_log('🎯 RESULTADOS FINALES DE LA QUERY:');
+        error_log('   - Productos devueltos: ' . count($posts));
+        
+        if (!empty($posts)) {
+            $post_ids = array_map(function($post) { return $post->ID; }, $posts);
+            error_log('   - IDs devueltos: ' . implode(', ', $post_ids));
+        } else {
+            error_log('   ⚠️  ARRAY VACÍO - Los productos fueron filtrados DESPUÉS de la query');
+            error_log('   - SQL ejecutada: ' . $query->request);
+        }
+        
+        return $posts;
     }
     
     /**
