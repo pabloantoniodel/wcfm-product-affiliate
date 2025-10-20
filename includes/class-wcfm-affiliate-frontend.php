@@ -51,6 +51,10 @@ class WCFM_Affiliate_Frontend {
         // Load scripts
         add_action('wcfm_load_scripts', array($this, 'load_scripts'), 30);
         add_action('wp_enqueue_scripts', array($this, 'enqueue_frontend_scripts'));
+        add_action('wcfm_load_scripts', array($this, 'load_mobile_menu_fix'), 40);
+        
+        // Deshabilitar GMW location form script en páginas WCFM para evitar error de Google Maps
+        add_action('wp_enqueue_scripts', array($this, 'disable_gmw_in_wcfm'), 999);
         
         // AJAX handlers
         add_action('wp_ajax_wcfm_affiliate_add_product', array($this, 'ajax_add_affiliate'));
@@ -234,6 +238,50 @@ class WCFM_Affiliate_Frontend {
     }
     
     /**
+     * Load mobile menu fix script
+     */
+    public function load_mobile_menu_fix($end_point) {
+        // Cargar CSS para menú móvil
+        wp_enqueue_style('wcfm-mobile-menu-fix-css', WCFM_AFFILIATE_PLUGIN_URL . 'frontend/assets/css/mobile-menu-fix.css', array(), WCFM_AFFILIATE_VERSION);
+        
+        // Cargar JS en todas las páginas de WCFM con versión actualizada
+        wp_enqueue_script('wcfm-mobile-menu-fix', WCFM_AFFILIATE_PLUGIN_URL . 'frontend/assets/js/mobile-menu-fix.js', array('jquery'), '1.0.2', true);
+    }
+    
+    /**
+     * Deshabilitar GMW location form script en páginas WCFM
+     * Esto previene el error: "Uncaught ReferenceError: google is not defined"
+     */
+    public function disable_gmw_in_wcfm() {
+        global $wp;
+        
+        // Detectar si estamos en una página de WCFM
+        $is_wcfm_page = false;
+        
+        // Verificar si la URL contiene 'store-manager'
+        if (isset($wp->request) && strpos($wp->request, 'store-manager') !== false) {
+            $is_wcfm_page = true;
+        }
+        
+        // O si estamos en un endpoint de WCFM
+        if (function_exists('wcfm_get_option') && isset($wp->query_vars) && !empty($wp->query_vars)) {
+            $wcfm_endpoints = array('wcfm-affiliate-products', 'wcfm-products', 'wcfm-orders', 'wcfm-dashboard');
+            foreach ($wcfm_endpoints as $endpoint) {
+                if (isset($wp->query_vars[$endpoint])) {
+                    $is_wcfm_page = true;
+                    break;
+                }
+            }
+        }
+        
+        // Si es página WCFM, deshabilitar GMW location form
+        if ($is_wcfm_page) {
+            wp_dequeue_script('gmw-location-form');
+            wp_deregister_script('gmw-location-form');
+        }
+    }
+    
+    /**
      * Enqueue frontend scripts
      */
     public function enqueue_frontend_scripts() {
@@ -380,32 +428,24 @@ class WCFM_Affiliate_Frontend {
         $store_name = get_query_var($WCFMmp->wcfm_store_url);
         
         if (empty($store_name)) {
+            error_log('🔍 Affiliate Query: store_name vacío');
             return;
         }
         
         $seller_info = get_user_by('slug', $store_name);
         
         if (!$seller_info) {
+            error_log('🔍 Affiliate Query: seller_info no encontrado para: ' . $store_name);
             return;
         }
         
         $vendor_id = $seller_info->ID;
+        error_log('🔍 Affiliate Query: Procesando tienda: ' . $store_name . ' (ID: ' . $vendor_id . ')');
         
         // Obtener productos afiliados de este vendedor
         $affiliates = WCFM_Affiliate()->db->get_vendor_affiliates($vendor_id, 'active');
         
-        if (empty($affiliates)) {
-            return;
-        }
-        
-        // Extraer IDs de productos afiliados
-        $affiliate_product_ids = array();
-        foreach ($affiliates as $affiliate) {
-            $affiliate_product_ids[] = $affiliate->product_id;
-        }
-        
-        // Modificar la query para incluir productos afiliados
-        // En lugar de solo author_name, usamos post__in con productos propios + afiliados
+        error_log('🔍 Affiliate Query: Productos afiliados encontrados: ' . count($affiliates));
         
         // Obtener productos propios del vendedor
         $own_products = get_posts(array(
@@ -416,23 +456,32 @@ class WCFM_Affiliate_Frontend {
             'post_status' => 'publish'
         ));
         
+        error_log('🔍 Affiliate Query: Productos propios: ' . count($own_products));
+        
+        // Si no hay afiliados, dejar que WooCommerce use el filtro normal de autor
+        if (empty($affiliates)) {
+            error_log('✅ Affiliate Query: Sin afiliados, usando solo productos propios');
+            return;
+        }
+        
+        // Extraer IDs de productos afiliados
+        $affiliate_product_ids = array();
+        foreach ($affiliates as $affiliate) {
+            $affiliate_product_ids[] = $affiliate->product_id;
+        }
+        
         // Combinar productos propios + afiliados
         $all_product_ids = array_merge($own_products, $affiliate_product_ids);
+        
+        error_log('✅ Affiliate Query: Total productos (propios + afiliados): ' . count($all_product_ids));
+        error_log('   - Propios: ' . count($own_products));
+        error_log('   - Afiliados: ' . count($affiliate_product_ids));
         
         // Aplicar a la query
         if (!empty($all_product_ids)) {
             $query->set('post__in', $all_product_ids);
             $query->set('author_name', ''); // Limpiar filtro de autor
-        }
-        
-        // Log para debug
-        if (defined('WP_DEBUG') && WP_DEBUG) {
-            error_log(sprintf(
-                'Affiliate: Store %s showing %d own + %d affiliate products',
-                $store_name,
-                count($own_products),
-                count($affiliate_product_ids)
-            ));
+            $query->set('author', ''); // También limpiar author por ID
         }
     }
     
