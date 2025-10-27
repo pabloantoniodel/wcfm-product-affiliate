@@ -48,6 +48,7 @@ class WCFM_Product_Affiliate {
     public $admin;
     public $commission;
     public $tracking;
+    public $link_tracking;
     
     /**
      * Main Instance
@@ -127,6 +128,7 @@ class WCFM_Product_Affiliate {
         // Core classes
         require_once WCFM_AFFILIATE_PLUGIN_DIR . 'includes/class-wcfm-affiliate-db.php';
         require_once WCFM_AFFILIATE_PLUGIN_DIR . 'includes/class-wcfm-affiliate-tracking.php';
+        require_once WCFM_AFFILIATE_PLUGIN_DIR . 'includes/class-wcfm-affiliate-link-tracking.php';
         require_once WCFM_AFFILIATE_PLUGIN_DIR . 'includes/class-wcfm-affiliate-commission.php';
         
         // Frontend
@@ -138,6 +140,22 @@ class WCFM_Product_Affiliate {
         if (is_admin()) {
             require_once WCFM_AFFILIATE_PLUGIN_DIR . 'includes/class-wcfm-affiliate-admin.php';
         }
+        
+        // ============================================
+        // BLOQUEADOR DE PRODUCTOS AFILIADOS [CLONAR]
+        // ============================================
+        // DESACTIVADO POR DEFECTO
+        // Descomenta la siguiente línea para BLOQUEAR el acceso a productos afiliados
+        // y redirigir automáticamente a los productos originales
+        //
+        // IMPORTANTE: Cuando está activado:
+        // - Los productos afiliados NO serán accesibles directamente
+        // - Los visitantes serán redirigidos al producto original (301 redirect)
+        // - Los productos afiliados NO aparecerán en búsquedas ni listados
+        // - Solo se mostrarán los productos originales
+        //
+        // Para activar, descomenta esta línea:
+        // require_once WCFM_AFFILIATE_PLUGIN_DIR . 'includes/class-wcfm-affiliate-blocker.php';
     }
     
     /**
@@ -146,6 +164,7 @@ class WCFM_Product_Affiliate {
     private function init_classes() {
         $this->db = new WCFM_Affiliate_DB();
         $this->tracking = new WCFM_Affiliate_Tracking();
+        $this->link_tracking = new WCFM_Affiliate_Link_Tracking();
         $this->commission = new WCFM_Affiliate_Commission();
         
         if (!is_admin() || defined('DOING_AJAX')) {
@@ -155,6 +174,12 @@ class WCFM_Product_Affiliate {
         if (is_admin()) {
             $this->admin = new WCFM_Affiliate_Admin();
         }
+        
+        // Inicializar bloqueador de productos afiliados (solo si está activado)
+        // Descomenta la siguiente línea cuando descomentes el require_once arriba
+        // if (class_exists('WCFM_Affiliate_Blocker')) {
+        //     $this->blocker = new WCFM_Affiliate_Blocker();
+        // }
     }
     
     /**
@@ -179,7 +204,9 @@ class WCFM_Product_Affiliate {
         
         // Create tables
         require_once WCFM_AFFILIATE_PLUGIN_DIR . 'includes/class-wcfm-affiliate-db.php';
+        require_once WCFM_AFFILIATE_PLUGIN_DIR . 'includes/class-wcfm-affiliate-link-tracking.php';
         WCFM_Affiliate_DB::create_tables();
+        WCFM_Affiliate_Link_Tracking::create_table();
         
         // Set default options
         $default_options = array(

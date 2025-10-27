@@ -61,6 +61,8 @@ class WCFM_Affiliate_Frontend {
         add_action('wp_ajax_wcfm_affiliate_remove_product', array($this, 'ajax_remove_affiliate'));
         add_action('wp_ajax_wcfm_affiliate_bulk_add', array($this, 'ajax_bulk_add'));
         add_action('wp_ajax_wcfm_affiliate_hide_instructions', array($this, 'ajax_hide_instructions'));
+        add_action('wp_ajax_wcfm_affiliate_search_products', array($this, 'ajax_search_products'));
+        add_action('wp_ajax_wcfm_affiliate_search_my_products', array($this, 'ajax_search_my_products'));
         
         // Add affiliate products to vendor store
         add_action('pre_get_posts', array($this, 'add_affiliates_to_store_query'), 999);
@@ -150,6 +152,13 @@ class WCFM_Affiliate_Frontend {
                     'icon' => 'handshake-o',
                     'menu_for' => 'vendor',
                     'priority' => 65
+                ),
+                'wcfm-affiliate-link-stats' => array(
+                    'label' => 'Enlaces',
+                    'url' => wcfm_get_endpoint_url('wcfm-affiliate-link-stats', '', get_wcfm_page()),
+                    'icon' => 'chart-line',
+                    'menu_for' => 'vendor',
+                    'priority' => 66
                 )
             ) +
             array_slice($menus, 3, count($menus) - 3, true);
@@ -165,6 +174,7 @@ class WCFM_Affiliate_Frontend {
         
         $query_affiliate_vars = array(
             'wcfm-affiliate-products' => !empty($wcfm_modified_endpoints['wcfm-affiliate-products']) ? $wcfm_modified_endpoints['wcfm-affiliate-products'] : 'affiliate-products',
+            'wcfm-affiliate-link-stats' => !empty($wcfm_modified_endpoints['wcfm-affiliate-link-stats']) ? $wcfm_modified_endpoints['wcfm-affiliate-link-stats'] : 'affiliate-link-stats',
         );
         
         $query_vars = array_merge($query_vars, $query_affiliate_vars);
@@ -178,6 +188,9 @@ class WCFM_Affiliate_Frontend {
     public function add_endpoint_title($title, $endpoint) {
         if ($endpoint === 'wcfm-affiliate-products') {
             $title = 'Productos Afiliados';
+        }
+        if ($endpoint === 'wcfm-affiliate-link-stats') {
+            $title = 'Enlaces';
         }
         return $title;
     }
@@ -206,6 +219,7 @@ class WCFM_Affiliate_Frontend {
      */
     public function endpoint_slug($endpoints) {
         $endpoints['wcfm-affiliate-products'] = 'affiliate-products';
+        $endpoints['wcfm-affiliate-link-stats'] = 'affiliate-link-stats';
         return $endpoints;
     }
     
@@ -215,6 +229,9 @@ class WCFM_Affiliate_Frontend {
     public function load_views($end_point) {
         if ($end_point === 'wcfm-affiliate-products') {
             include WCFM_AFFILIATE_PLUGIN_DIR . 'frontend/views/affiliate-catalog.php';
+        }
+        if ($end_point === 'wcfm-affiliate-link-stats') {
+            include WCFM_AFFILIATE_PLUGIN_DIR . 'frontend/views/link-statistics.php';
         }
     }
     
@@ -409,6 +426,287 @@ class WCFM_Affiliate_Frontend {
             delete_user_meta($user_id, '_wcfm_affiliate_hide_instructions');
             wp_send_json_success(array('message' => 'Instrucciones restauradas'));
         }
+    }
+    
+    /**
+     * AJAX: Búsqueda de productos para afiliación
+     */
+    public function ajax_search_products() {
+        check_ajax_referer('wcfm_affiliate_nonce', 'nonce');
+        
+        if (!wcfm_is_vendor()) {
+            wp_send_json_error(array('message' => 'No autorizado'));
+        }
+        
+        $search = isset($_POST['search']) ? sanitize_text_field($_POST['search']) : '';
+        
+        if (strlen($search) < 3) {
+            wp_send_json_error(array('message' => 'Mínimo 3 caracteres'));
+        }
+        
+        $vendor_id = get_current_user_id();
+        
+        // Obtener productos afiliados actuales del vendedor
+        $current_affiliates = WCFM_Affiliate()->db->get_vendor_affiliates($vendor_id);
+        $affiliate_product_ids = array();
+        foreach ($current_affiliates as $affiliate) {
+            $affiliate_product_ids[] = $affiliate->product_id;
+        }
+        
+        // Buscar productos disponibles
+        $args = array(
+            'post_type' => 'product',
+            'posts_per_page' => 50,
+            'post_status' => 'publish',
+            'author__not_in' => array($vendor_id),
+            'post__not_in' => $affiliate_product_ids,
+            's' => $search
+        );
+        
+        $products = new WP_Query($args);
+        
+        if (!$products->have_posts()) {
+            wp_send_json_success(array(
+                'html' => '<tr><td colspan="7" style="text-align: center; padding: 40px; color: #999;">No se encontraron productos para "' . esc_html($search) . '"</td></tr>',
+                'count' => 0
+            ));
+        }
+        
+        $default_commission = WCFM_Affiliate()->get_option('default_commission_rate', 1);
+        
+        ob_start();
+        while ($products->have_posts()) {
+            $products->the_post();
+            $product = wc_get_product(get_the_ID());
+            $product_id = get_the_ID();
+            $author_id = get_post_field('post_author', $product_id);
+            $owner = get_userdata($author_id);
+            
+            // Obtener categorías
+            $terms = get_the_terms($product_id, 'product_cat');
+            $categories_names = array();
+            if ($terms && !is_wp_error($terms)) {
+                foreach ($terms as $term) {
+                    $categories_names[] = $term->name;
+                }
+            }
+            $categories_str = !empty($categories_names) ? implode(', ', $categories_names) : '-';
+            
+            // Calcular ganancia estimada
+            $price = $product->get_price();
+            $estimated_commission = $price ? ($price * $default_commission / 100) : 0;
+            
+            // Obtener imagen
+            $image = $product->get_image('thumbnail');
+            $image = str_replace('width="300"', 'width="80"', $image);
+            $image = str_replace('height="300"', 'height="80"', $image);
+            ?>
+            <tr style="border-bottom: 1px solid #e9ecef;">
+                <td style="padding: 12px; text-align: center;">
+                    <input type="checkbox" class="affiliate-product-checkbox" value="<?php echo $product_id; ?>">
+                </td>
+                <td style="padding: 12px;">
+                    <div style="display: flex; align-items: flex-start; gap: 12px;">
+                        <div style="flex-shrink: 0; width: 80px;">
+                            <?php echo $image; ?>
+                        </div>
+                        <div style="flex: 1; min-width: 0;">
+                            <a href="<?php the_permalink(); ?>" target="_blank" style="font-weight: 500; color: #333; text-decoration: none; display: block; margin-bottom: 6px;">
+                                <?php the_title(); ?>
+                            </a>
+                            <?php if ($product->get_short_description()): ?>
+                                <div style="font-size: 13px; color: #666; margin-bottom: 6px; line-height: 1.4;">
+                                    <?php echo wp_trim_words($product->get_short_description(), 15, '...'); ?>
+                                </div>
+                            <?php endif; ?>
+                            <?php if ($product->get_sku()): ?>
+                                <div style="font-size: 11px; color: #999;">
+                                    SKU: <?php echo $product->get_sku(); ?>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </td>
+                <td style="padding: 12px;">
+                    <strong style="color: #333;"><?php echo $product->get_price_html(); ?></strong>
+                </td>
+                <td style="padding: 12px;">
+                    <?php if ($owner): ?>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <?php echo get_avatar($owner->ID, 32, '', '', array('style' => 'border-radius: 50%;')); ?>
+                            <span><?php echo esc_html($owner->display_name); ?></span>
+                        </div>
+                    <?php else: ?>
+                        -
+                    <?php endif; ?>
+                </td>
+                <td style="padding: 12px;">
+                    <div>
+                        <strong style="color: #28a745; font-size: 16px;"><?php echo $default_commission; ?>%</strong>
+                    </div>
+                    <?php if ($estimated_commission > 0): ?>
+                        <div style="font-size: 12px; color: #666; margin-top: 4px;">
+                            ~<?php echo wc_price($estimated_commission); ?> / venta
+                        </div>
+                    <?php endif; ?>
+                </td>
+                <td style="padding: 12px; font-size: 13px; color: #666;">
+                    <?php echo esc_html($categories_str); ?>
+                </td>
+                <td style="padding: 12px; text-align: center;">
+                    <a href="#" 
+                       class="wcfm_affiliate_add_button" 
+                       data-product-id="<?php echo $product_id; ?>" 
+                       style="background: #667eea; color: white; padding: 8px 16px; border-radius: 4px; text-decoration: none; display: inline-block; font-size: 13px; font-weight: 500;"
+                       title="Añadir a mi tienda">
+                        <span class="wcfmfa fa-plus-circle"></span> Añadir
+                    </a>
+                </td>
+            </tr>
+            <?php
+        }
+        wp_reset_postdata();
+        
+        $html = ob_get_clean();
+        
+        wp_send_json_success(array(
+            'html' => $html,
+            'count' => $products->found_posts
+        ));
+    }
+    
+    /**
+     * AJAX: Búsqueda de mis productos afiliados
+     */
+    public function ajax_search_my_products() {
+        check_ajax_referer('wcfm_affiliate_nonce', 'nonce');
+        
+        if (!wcfm_is_vendor()) {
+            wp_send_json_error(array('message' => 'No autorizado'));
+        }
+        
+        $search = isset($_POST['search']) ? sanitize_text_field($_POST['search']) : '';
+        
+        if (strlen($search) < 3) {
+            wp_send_json_error(array('message' => 'Mínimo 3 caracteres'));
+        }
+        
+        $vendor_id = get_current_user_id();
+        
+        // Obtener productos afiliados del vendedor
+        $affiliates = WCFM_Affiliate()->db->get_vendor_affiliates($vendor_id);
+        
+        if (empty($affiliates)) {
+            wp_send_json_success(array(
+                'html' => '<tr><td colspan="6" style="text-align: center; padding: 40px; color: #999;">No tienes productos afiliados</td></tr>',
+                'count' => 0
+            ));
+        }
+        
+        $search_lower = strtolower($search);
+        $filtered_affiliates = array();
+        
+        // Filtrar afiliados que coincidan con la búsqueda
+        foreach ($affiliates as $affiliate) {
+            $product = wc_get_product($affiliate->product_id);
+            if (!$product) continue;
+            
+            $owner = get_userdata($affiliate->product_owner_id);
+            
+            // Buscar en título, SKU o nombre del propietario
+            $title = strtolower($product->get_name());
+            $sku = strtolower($product->get_sku());
+            $owner_name = $owner ? strtolower($owner->display_name) : '';
+            
+            if (strpos($title, $search_lower) !== false || 
+                strpos($sku, $search_lower) !== false || 
+                strpos($owner_name, $search_lower) !== false) {
+                $filtered_affiliates[] = $affiliate;
+            }
+        }
+        
+        if (empty($filtered_affiliates)) {
+            wp_send_json_success(array(
+                'html' => '<tr><td colspan="6" style="text-align: center; padding: 40px; color: #999;">No se encontraron productos para "' . esc_html($search) . '"</td></tr>',
+                'count' => 0
+            ));
+        }
+        
+        ob_start();
+        foreach ($filtered_affiliates as $affiliate) {
+            $product = wc_get_product($affiliate->product_id);
+            $owner = get_userdata($affiliate->product_owner_id);
+            
+            if ($product) {
+                // Obtener imagen ajustada
+                $image = $product->get_image('thumbnail');
+                $image = str_replace('width="300"', 'width="80"', $image);
+                $image = str_replace('height="300"', 'height="80"', $image);
+            }
+            ?>
+            <tr style="border-bottom: 1px solid #e9ecef;">
+                <td style="padding: 12px;">
+                    <?php if ($product): ?>
+                        <div style="display: flex; align-items: flex-start; gap: 12px;">
+                            <div style="flex-shrink: 0; width: 80px;">
+                                <?php echo $image; ?>
+                            </div>
+                            <div style="flex: 1; min-width: 0;">
+                                <a href="<?php echo get_permalink($product->get_id()); ?>" target="_blank" style="font-weight: 500; color: #333; text-decoration: none; display: block; margin-bottom: 6px;">
+                                    <?php echo $product->get_name(); ?>
+                                </a>
+                                <?php if ($product->get_short_description()): ?>
+                                    <div style="font-size: 13px; color: #666; margin-bottom: 6px; line-height: 1.4;">
+                                        <?php echo wp_trim_words($product->get_short_description(), 15, '...'); ?>
+                                    </div>
+                                <?php endif; ?>
+                                <?php if ($product->get_sku()): ?>
+                                    <div style="font-size: 11px; color: #999;">
+                                        SKU: <?php echo $product->get_sku(); ?>
+                                    </div>
+                                <?php endif; ?>
+                                <div style="font-size: 13px; color: #2271b1; margin-top: 6px;">
+                                    <strong><?php echo $product->get_price_html(); ?></strong>
+                                </div>
+                            </div>
+                        </div>
+                    <?php else: ?>
+                        <span style="color: #999;">Producto no encontrado</span>
+                    <?php endif; ?>
+                </td>
+                <td style="padding: 12px;">
+                    <?php if ($owner): ?>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <?php echo get_avatar($owner->ID, 32, '', '', array('style' => 'border-radius: 50%;')); ?>
+                            <span><?php echo esc_html($owner->display_name); ?></span>
+                        </div>
+                    <?php else: ?>
+                        -
+                    <?php endif; ?>
+                </td>
+                <td style="padding: 12px;">
+                    <strong style="color: #28a745; font-size: 16px;"><?php echo floatval($affiliate->commission_rate); ?>%</strong>
+                </td>
+                <td style="padding: 12px;">
+                    <span style="background: #28a745; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px;">
+                        <?php echo esc_html(ucfirst($affiliate->status)); ?>
+                    </span>
+                </td>
+                <td style="padding: 12px;"><?php echo date_i18n('d/m/Y', strtotime($affiliate->created_at)); ?></td>
+                <td style="padding: 12px;">
+                    <a href="#" class="wcfm_affiliate_remove_button" data-product-id="<?php echo esc_attr($affiliate->product_id); ?>" style="color: #dc3545; text-decoration: none; font-weight: 500;" title="Eliminar de mi tienda">
+                        <span class="wcfmfa fa-trash"></span> Eliminar
+                    </a>
+                </td>
+            </tr>
+            <?php
+        }
+        $html = ob_get_clean();
+        
+        wp_send_json_success(array(
+            'html' => $html,
+            'count' => count($filtered_affiliates)
+        ));
     }
     
     /**

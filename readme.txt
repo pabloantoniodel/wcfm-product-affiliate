@@ -98,3 +98,5 @@ Está diseñado específicamente para WCFM Marketplace. La compatibilidad con ot
 = 1.0.0 =
 Primera versión del plugin.
 
+
+

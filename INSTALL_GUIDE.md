@@ -274,3 +274,5 @@ El plugin está **100% funcional** y listo para:
 **Versión:** 1.0.0  
 **Estado:** Producción ✅
 
+
+

@@ -270,3 +270,5 @@ class WCFM_Affiliate_Commission {
     }
 }
 
+
+

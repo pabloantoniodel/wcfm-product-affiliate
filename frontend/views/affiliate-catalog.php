@@ -9,6 +9,59 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// CSS para que el contenido ocupe todo el ancho y esté alineado a la izquierda
+?>
+<style>
+    /* Contenedores al 100% del ancho */
+    .wcfm-container,
+    #wcfm-main-contentainer .wcfm-container,
+    .wcfm-collapse .wcfm-container {
+        max-width: 100% !important;
+        width: 100% !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        text-align: left !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+    
+    /* Títulos alineados a la izquierda */
+    .wcfm-container h2,
+    .wcfm-container h3 {
+        text-align: left !important;
+        margin-left: 0 !important;
+        padding-left: 0 !important;
+    }
+    
+    /* Tablas sin márgenes */
+    .wcfm-table,
+    .wcfm-container .wcfm-table,
+    table.wcfm-table {
+        margin: 0 !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        width: 100% !important;
+        text-align: left !important;
+    }
+    
+    /* Divs de overflow al 100% */
+    .wcfm-container > div {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+    
+    /* Eliminar cualquier centrado */
+    .wcfm-container * {
+        text-align: inherit !important;
+    }
+    
+    .wcfm-container td,
+    .wcfm-container th {
+        text-align: left !important;
+    }
+</style>
+<?php
+
 global $WCFMmp;
 $vendor_id = get_current_user_id();
 
@@ -69,7 +122,13 @@ $total_pages = $products->max_num_pages;
     <div class="wcfm-page-headig">
         <span class="wcfmfa fa-handshake-o"></span>
         <span class="wcfm-page-heading-text">Productos Afiliados</span>
-        <?php do_action('wcfm_page_heading'); ?>
+        <?php
+        // Incluir el header panel oficial de WCFM con notificaciones
+        $wcfm_views_path = WP_PLUGIN_DIR . '/wc-frontend-manager/views/';
+        if (file_exists($wcfm_views_path . 'wcfm-view-header-panels.php')) {
+            include($wcfm_views_path . 'wcfm-view-header-panels.php');
+        }
+        ?>
     </div>
     
     <div class="wcfm-collapse-content">
@@ -146,8 +205,28 @@ $total_pages = $products->max_num_pages;
         
         <!-- Productos Afiliados Actuales -->
         <?php if (!empty($current_affiliates)): ?>
-        <div class="wcfm-container" style="margin-bottom: 30px;">
-            <h2>Mis Productos Afiliados</h2>
+        <div class="wcfm-container" style="margin-bottom: 30px; max-width: 100% !important; width: 100% !important;">
+            <h2 style="text-align: left; margin-left: 0;">Mis Productos Afiliados</h2>
+            
+            <!-- Buscador para Mis Productos -->
+            <div style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                <div style="position: relative;">
+                    <label for="search-my-products" style="display: block; font-weight: 600; margin-bottom: 8px; color: #333;">
+                        🔍 Buscar en: Producto, Propietario o SKU
+                    </label>
+                    <input 
+                        type="text" 
+                        id="search-my-products" 
+                        placeholder="Escribe al menos 3 caracteres para buscar..." 
+                        style="width: 100%; padding: 12px 45px 12px 15px; border: 2px solid #dee2e6; border-radius: 8px; font-size: 16px; box-sizing: border-box; transition: border-color 0.3s;"
+                    >
+                    <span id="my-products-search-loading" style="display: none; position: absolute; right: 15px; top: 43px; color: #2271b1;">
+                        <span class="dashicons dashicons-update" style="animation: spin 1s linear infinite;"></span>
+                    </span>
+                    <div id="my-products-search-status" style="margin-top: 8px; font-size: 14px; color: #666;"></div>
+                </div>
+            </div>
+            
             <div style="overflow-x: auto;">
                 <table class="wcfm-table" style="width: 100%;">
                     <thead>
@@ -160,27 +239,62 @@ $total_pages = $products->max_num_pages;
                             <th style="padding: 12px;">Acciones</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="my-products-tbody">
                         <?php foreach ($current_affiliates as $affiliate): ?>
                             <?php
                             $product = wc_get_product($affiliate->product_id);
                             $owner = get_userdata($affiliate->product_owner_id);
+                            
+                            if ($product) {
+                                // Obtener imagen ajustada
+                                $image = $product->get_image('thumbnail');
+                                $image = str_replace('width="300"', 'width="80"', $image);
+                                $image = str_replace('height="300"', 'height="80"', $image);
+                            }
                             ?>
-                            <tr>
+                            <tr style="border-bottom: 1px solid #e9ecef;">
                                 <td style="padding: 12px;">
                                     <?php if ($product): ?>
-                                        <div style="display: flex; align-items: center; gap: 10px;">
-                                            <?php echo $product->get_image('thumbnail'); ?>
-                                            <a href="<?php echo get_permalink($product->get_id()); ?>" target="_blank" style="font-weight: 500;">
-                                                <?php echo $product->get_name(); ?>
-                                            </a>
+                                        <div style="display: flex; align-items: flex-start; gap: 12px;">
+                                            <div style="flex-shrink: 0; width: 80px;">
+                                                <?php echo $image; ?>
+                                            </div>
+                                            <div style="flex: 1; min-width: 0;">
+                                                <a href="<?php echo get_permalink($product->get_id()); ?>" target="_blank" style="font-weight: 500; color: #333; text-decoration: none; display: block; margin-bottom: 6px;">
+                                                    <?php echo $product->get_name(); ?>
+                                                </a>
+                                                <?php if ($product->get_short_description()): ?>
+                                                    <div style="font-size: 13px; color: #666; margin-bottom: 6px; line-height: 1.4;">
+                                                        <?php echo wp_trim_words($product->get_short_description(), 15, '...'); ?>
+                                                    </div>
+                                                <?php endif; ?>
+                                                <?php if ($product->get_sku()): ?>
+                                                    <div style="font-size: 11px; color: #999;">
+                                                        SKU: <?php echo $product->get_sku(); ?>
+                                                    </div>
+                                                <?php endif; ?>
+                                                <div style="font-size: 13px; color: #2271b1; margin-top: 6px;">
+                                                    <strong><?php echo $product->get_price_html(); ?></strong>
+                                                </div>
+                                            </div>
                                         </div>
                                     <?php else: ?>
                                         <span style="color: #999;">Producto no encontrado</span>
                                     <?php endif; ?>
                                 </td>
-                                <td style="padding: 12px;"><?php echo $owner ? esc_html($owner->display_name) : '-'; ?></td>
-                                <td style="padding: 12px;"><strong style="color: #2ecc71;"><?php echo floatval($affiliate->commission_rate); ?>%</strong></td>
+                                <td style="padding: 12px;">
+                                    <?php if ($owner): ?>
+                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                            <?php echo get_avatar($owner->ID, 32, '', '', array('style' => 'border-radius: 50%;')); ?>
+                                            <span><?php echo esc_html($owner->display_name); ?></span>
+                                        </div>
+                                    <?php else: ?>
+                                        -
+                                    <?php endif; ?>
+                                </td>
+                                <td style="padding: 12px;">
+                                    <strong style="color: #28a745; font-size: 16px;"><?php echo floatval($affiliate->commission_rate); ?>%</strong>
+                                </td>
                                 <td style="padding: 12px;">
                                     <span style="background: #28a745; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px;">
                                         <?php echo esc_html(ucfirst($affiliate->status)); ?>
@@ -206,71 +320,31 @@ $total_pages = $products->max_num_pages;
             <p style="color: #666; margin-bottom: 20px;">Encuentra productos de otros vendedores para añadir a tu tienda y ganar comisiones por cada venta.</p>
             
             <form id="affiliate-search-form" style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 15px; align-items: end;">
+                <div style="display: grid; grid-template-columns: 1fr; gap: 15px; align-items: end;">
                     <!-- Buscador de texto -->
-                    <div>
-                        <label style="display: block; margin-bottom: 5px; font-weight: 500;">Buscar producto</label>
+                    <div style="position: relative;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">
+                            🔍 Buscar en: Nombre, Descripción, SKU
+                        </label>
                         <input type="text" 
                                name="affiliate_search" 
                                id="affiliate_search" 
-                               value="<?php echo esc_attr($search_term); ?>" 
-                               placeholder="Nombre, descripción, SKU..." 
-                               style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
-                    </div>
-                    
-                    <!-- Filtro de categoría -->
-                    <div>
-                        <label style="display: block; margin-bottom: 5px; font-weight: 500;">Categoría</label>
-                        <select name="affiliate_category" id="affiliate_category" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
-                            <option value="">Todas las categorías</option>
-                            <?php
-                            $categories = get_terms(array(
-                                'taxonomy' => 'product_cat',
-                                'hide_empty' => true,
-                            ));
-                            foreach ($categories as $category) {
-                                $selected = ($search_category == $category->term_id) ? 'selected' : '';
-                                echo '<option value="' . $category->term_id . '" ' . $selected . '>' . esc_html($category->name) . ' (' . $category->count . ')</option>';
-                            }
-                            ?>
-                        </select>
-                    </div>
-                    
-                    <!-- Filtro de vendedor -->
-                    <div>
-                        <label style="display: block; margin-bottom: 5px; font-weight: 500;">Vendedor</label>
-                        <select name="affiliate_vendor" id="affiliate_vendor" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
-                            <option value="">Todos los vendedores</option>
-                            <?php
-                            $vendors = get_users(array(
-                                'role__in' => array('wcfm_vendor', 'seller', 'vendor'),
-                                'exclude' => array($vendor_id),
-                            ));
-                            foreach ($vendors as $vendor_user) {
-                                $selected = ($search_vendor == $vendor_user->ID) ? 'selected' : '';
-                                echo '<option value="' . $vendor_user->ID . '" ' . $selected . '>' . esc_html($vendor_user->display_name) . '</option>';
-                            }
-                            ?>
-                        </select>
-                    </div>
-                    
-                    <!-- Botones -->
-                    <div style="display: flex; gap: 10px;">
-                        <button type="button" id="affiliate_search_btn" style="background: #667eea; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: 500;">
-                            <span class="wcfmfa fa-search"></span> Buscar
-                        </button>
-                        <button type="button" id="affiliate_clear_btn" style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: 500;">
-                            <span class="wcfmfa fa-refresh"></span> Limpiar
-                        </button>
+                               value="" 
+                               placeholder="Escribe al menos 3 caracteres para buscar..." 
+                               style="width: 100%; padding: 12px 45px 12px 15px; border: 2px solid #dee2e6; border-radius: 8px; font-size: 16px; box-sizing: border-box; transition: border-color 0.3s;">
+                        <span id="products-search-loading" style="display: none; position: absolute; right: 15px; top: 43px; color: #2271b1;">
+                            <span class="dashicons dashicons-update" style="animation: spin 1s linear infinite;"></span>
+                        </span>
+                        <div id="products-search-status" style="margin-top: 8px; font-size: 14px; color: #666;"></div>
                     </div>
                 </div>
             </form>
         </div>
         
         <!-- Productos Disponibles -->
-        <div class="wcfm-container">
+        <div class="wcfm-container" style="max-width: 100% !important; width: 100% !important;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h2 style="margin: 0;">Productos Disponibles <?php if (!empty($search_term)) echo '- Resultados para: "' . esc_html($search_term) . '"'; ?></h2>
+                <h2 style="margin: 0; text-align: left;">Productos Disponibles <?php if (!empty($search_term)) echo '- Resultados para: "' . esc_html($search_term) . '"'; ?></h2>
                 <button id="wcfm_bulk_add_affiliates" class="wcfm_submit_button" style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: 500;">
                     <span class="wcfmfa fa-plus-circle"></span> Añadir Seleccionados
                 </button>
@@ -296,7 +370,7 @@ $total_pages = $products->max_num_pages;
                                 <th style="padding: 12px; width: 100px;">Acciones</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="products-available-tbody">
                             <?php while ($products->have_posts()): $products->the_post(); ?>
                                 <?php
                                 $product = wc_get_product(get_the_ID());
@@ -323,16 +397,27 @@ $total_pages = $products->max_num_pages;
                                         <input type="checkbox" class="affiliate-product-checkbox" value="<?php echo $product_id; ?>">
                                     </td>
                                     <td style="padding: 12px;">
-                                        <div style="display: flex; align-items: center; gap: 12px;">
-                                            <div style="flex-shrink: 0;">
-                                                <?php echo $product->get_image('thumbnail'); ?>
+                                        <div style="display: flex; align-items: flex-start; gap: 12px;">
+                                            <div style="flex-shrink: 0; width: 80px;">
+                                                <?php 
+                                                $image = $product->get_image('thumbnail');
+                                                // Modificar imagen para hacerla más pequeña
+                                                $image = str_replace('width="300"', 'width="80"', $image);
+                                                $image = str_replace('height="300"', 'height="80"', $image);
+                                                echo $image;
+                                                ?>
                                             </div>
-                                            <div>
-                                                <a href="<?php the_permalink(); ?>" target="_blank" style="font-weight: 500; color: #333; text-decoration: none;">
+                                            <div style="flex: 1; min-width: 0;">
+                                                <a href="<?php the_permalink(); ?>" target="_blank" style="font-weight: 500; color: #333; text-decoration: none; display: block; margin-bottom: 6px;">
                                                     <?php the_title(); ?>
                                                 </a>
+                                                <?php if ($product->get_short_description()): ?>
+                                                    <div style="font-size: 13px; color: #666; margin-bottom: 6px; line-height: 1.4;">
+                                                        <?php echo wp_trim_words($product->get_short_description(), 15, '...'); ?>
+                                                    </div>
+                                                <?php endif; ?>
                                                 <?php if ($product->get_sku()): ?>
-                                                    <div style="font-size: 12px; color: #999; margin-top: 4px;">
+                                                    <div style="font-size: 11px; color: #999;">
                                                         SKU: <?php echo $product->get_sku(); ?>
                                                     </div>
                                                 <?php endif; ?>
@@ -475,6 +560,18 @@ input[type="checkbox"]#select-all-affiliates {
     visibility: visible !important;
     opacity: 1 !important;
 }
+
+/* Estilos para buscador AJAX */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+#affiliate_search:focus,
+#search-my-products:focus {
+    border-color: #2271b1 !important;
+    outline: none;
+}
 </style>
 
 <script type="text/javascript">
@@ -508,36 +605,134 @@ jQuery(document).ready(function($) {
         return baseUrl + (params.length > 0 ? '?' + params.join('&') : '');
     }
     
-    // Manejar búsqueda
-    $('#affiliate_search_btn').on('click', function(e) {
-        e.preventDefault();
-        console.log('Search button clicked');
-        window.location.href = buildSearchUrl(1);
-    });
+    // Búsqueda AJAX en tiempo real
+    var searchTimeout;
+    var originalProductRows = $('#products-available-tbody').html();
     
-    // Limpiar búsqueda
-    $('#affiliate_clear_btn').on('click', function(e) {
-        e.preventDefault();
-        console.log('Clear button clicked');
-        var baseUrl = window.location.href.split('?')[0];
-        window.location.href = baseUrl;
-    });
-    
-    // Paginación
-    $('.affiliate-pagination').on('click', function(e) {
-        e.preventDefault();
-        var page = $(this).data('page');
-        console.log('Pagination clicked: page ' + page);
-        window.location.href = buildSearchUrl(page);
-    });
-    
-    // Permitir búsqueda con Enter
-    $('#affiliate_search').on('keypress', function(e) {
-        if (e.which === 13) {
-            e.preventDefault();
-            $('#affiliate_search_btn').click();
+    $('#affiliate_search').on('input', function() {
+        clearTimeout(searchTimeout);
+        var searchTerm = $(this).val().trim();
+        
+        // Si está vacío, restaurar tabla original
+        if (searchTerm === '') {
+            $('#products-available-tbody').html(originalProductRows);
+            $('#products-search-status').html('');
+            $('#products-search-loading').hide();
+            return;
         }
+        
+        // Si tiene menos de 3 caracteres, mostrar mensaje
+        if (searchTerm.length < 3) {
+            $('#products-search-status').html('<span style="color: #f0b849;">⚠️ Escribe al menos 3 caracteres para buscar</span>');
+            return;
+        }
+        
+        // Esperar 500ms después de que el usuario deje de escribir
+        searchTimeout = setTimeout(function() {
+            performProductsSearch(searchTerm);
+        }, 500);
     });
+    
+    function performProductsSearch(searchTerm) {
+        $('#products-search-loading').show();
+        $('#products-search-status').html('<span style="color: #2271b1;">Buscando productos...</span>');
+        
+        $.ajax({
+            url: wcfm_affiliate_params.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'wcfm_affiliate_search_products',
+                nonce: wcfm_affiliate_params.nonce,
+                search: searchTerm
+            },
+            success: function(response) {
+                $('#products-search-loading').hide();
+                
+                if (response.success) {
+                    $('#products-available-tbody').html(response.data.html);
+                    if (response.data.count > 0) {
+                        $('#products-search-status').html('<span style="color: #00a32a;">✓ ' + response.data.count + ' producto(s) encontrado(s)</span>');
+                    } else {
+                        $('#products-search-status').html('<span style="color: #999;">No se encontraron productos</span>');
+                    }
+                    
+                    // Re-bind event handlers for new rows
+                    initializeAffiliateButtons();
+                    initializeSelectAll();
+                } else {
+                    $('#products-search-status').html('<span style="color: #d63638;">Error en la búsqueda</span>');
+                }
+            },
+            error: function() {
+                $('#products-search-loading').hide();
+                $('#products-search-status').html('<span style="color: #d63638;">Error al conectar con el servidor</span>');
+            }
+        });
+    }
+    
+    // Búsqueda AJAX para "Mis Productos Afiliados"
+    var myProductsSearchTimeout;
+    var originalMyProductRows = $('#my-products-tbody').html();
+    
+    $('#search-my-products').on('input', function() {
+        clearTimeout(myProductsSearchTimeout);
+        var searchTerm = $(this).val().trim();
+        
+        // Si está vacío, restaurar tabla original
+        if (searchTerm === '') {
+            $('#my-products-tbody').html(originalMyProductRows);
+            $('#my-products-search-status').html('');
+            $('#my-products-search-loading').hide();
+            return;
+        }
+        
+        // Si tiene menos de 3 caracteres, mostrar mensaje
+        if (searchTerm.length < 3) {
+            $('#my-products-search-status').html('<span style="color: #f0b849;">⚠️ Escribe al menos 3 caracteres para buscar</span>');
+            return;
+        }
+        
+        // Esperar 500ms después de que el usuario deje de escribir
+        myProductsSearchTimeout = setTimeout(function() {
+            performMyProductsSearch(searchTerm);
+        }, 500);
+    });
+    
+    function performMyProductsSearch(searchTerm) {
+        $('#my-products-search-loading').show();
+        $('#my-products-search-status').html('<span style="color: #2271b1;">Buscando...</span>');
+        
+        $.ajax({
+            url: wcfm_affiliate_params.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'wcfm_affiliate_search_my_products',
+                nonce: wcfm_affiliate_params.nonce,
+                search: searchTerm
+            },
+            success: function(response) {
+                $('#my-products-search-loading').hide();
+                
+                if (response.success) {
+                    $('#my-products-tbody').html(response.data.html);
+                    if (response.data.count > 0) {
+                        $('#my-products-search-status').html('<span style="color: #00a32a;">✓ ' + response.data.count + ' producto(s) encontrado(s)</span>');
+                    } else {
+                        $('#my-products-search-status').html('<span style="color: #999;">No se encontraron productos</span>');
+                    }
+                    
+                    // Re-bind event handlers for remove buttons
+                    initializeRemoveButtons();
+                } else {
+                    $('#my-products-search-status').html('<span style="color: #d63638;">Error en la búsqueda</span>');
+                }
+            },
+            error: function() {
+                $('#my-products-search-loading').hide();
+                $('#my-products-search-status').html('<span style="color: #d63638;">Error al conectar con el servidor</span>');
+            }
+        });
+    }
     
     // Manejar ocultamiento de instrucciones
     $('#hide-instructions-btn').on('click', function(e) {

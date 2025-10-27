@@ -286,3 +286,5 @@ Ideas para futuras versiones:
 
 **¡Disfruta del plugin!** 🎉
 
+
+
