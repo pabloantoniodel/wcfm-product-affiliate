@@ -15,6 +15,14 @@ class WCFM_Affiliate_Bulk_Manager {
      * Constructor
      */
     public function __construct() {
+        // Registrar hooks AJAX inmediatamente
+        add_action('wp_ajax_wcfm_affiliate_search_products', array($this, 'ajax_search_products'));
+        add_action('wp_ajax_wcfm_affiliate_add_to_pool', array($this, 'ajax_add_to_pool'));
+        add_action('wp_ajax_wcfm_affiliate_remove_from_pool', array($this, 'ajax_remove_from_pool'));
+        add_action('wp_ajax_wcfm_affiliate_search_vendors', array($this, 'ajax_search_vendors'));
+        add_action('wp_ajax_wcfm_affiliate_bulk_affiliate', array($this, 'ajax_bulk_affiliate'));
+        
+        // Otros hooks
         $this->init_hooks();
     }
     
@@ -27,13 +35,6 @@ class WCFM_Affiliate_Bulk_Manager {
         
         // Enqueue scripts
         add_action('admin_enqueue_scripts', array($this, 'enqueue_scripts'));
-        
-        // AJAX handlers
-        add_action('wp_ajax_wcfm_affiliate_search_products', array($this, 'ajax_search_products'));
-        add_action('wp_ajax_wcfm_affiliate_add_to_pool', array($this, 'ajax_add_to_pool'));
-        add_action('wp_ajax_wcfm_affiliate_remove_from_pool', array($this, 'ajax_remove_from_pool'));
-        add_action('wp_ajax_wcfm_affiliate_search_vendors', array($this, 'ajax_search_vendors'));
-        add_action('wp_ajax_wcfm_affiliate_bulk_affiliate', array($this, 'ajax_bulk_affiliate'));
     }
     
     /**
@@ -313,9 +314,11 @@ class WCFM_Affiliate_Bulk_Manager {
      * AJAX: Search products
      */
     public function ajax_search_products() {
-        // Log para debug
-        error_log('WCFM Affiliate: ajax_search_products called');
+        // FORZAR respuesta para test
+        error_log('============================================');
+        error_log('WCFM Affiliate: ajax_search_products CALLED!!!');
         error_log('POST data: ' . print_r($_POST, true));
+        error_log('============================================');
         
         // Verificar nonce (false = no morir, solo retornar false)
         $nonce_check = check_ajax_referer('wcfm_affiliate_bulk_nonce', 'nonce', false);
