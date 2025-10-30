@@ -186,35 +186,64 @@ class WCFM_Affiliate_Vendor_Classification {
         
         error_log('🔍 WCFM Classification: Buscando vendors - Search: "' . $search . '" - Página: ' . $page);
         
-        // Argumentos base
-        $args = array(
-            'role' => 'wcfm_vendor',
-            'orderby' => 'registered',
-            'order' => 'DESC',
-            'number' => $per_page,
-            'offset' => ($page - 1) * $per_page
-        );
+        global $wpdb;
         
-        // Si hay búsqueda, añadir parámetros
+        // Si hay búsqueda, usar query personalizada para incluir store_name
         if (!empty($search)) {
-            $args['search'] = '*' . $search . '*';
-            $args['search_columns'] = array('user_login', 'user_email', 'display_name');
+            $search_like = '%' . $wpdb->esc_like($search) . '%';
             
-            // También buscar por store_name con meta_query
-            $args['meta_query'] = array(
-                'relation' => 'OR',
-                array(
-                    'key' => 'store_name',
-                    'value' => $search,
-                    'compare' => 'LIKE'
+            // Obtener IDs de usuarios que coincidan
+            $user_ids_query = "
+                SELECT DISTINCT u.ID 
+                FROM {$wpdb->users} u
+                INNER JOIN {$wpdb->usermeta} um_cap ON u.ID = um_cap.user_id 
+                    AND um_cap.meta_key = 'wp_capabilities' 
+                    AND um_cap.meta_value LIKE '%wcfm_vendor%'
+                LEFT JOIN {$wpdb->usermeta} um_store ON u.ID = um_store.user_id 
+                    AND um_store.meta_key = 'store_name'
+                WHERE (
+                    u.user_login LIKE %s OR 
+                    u.user_email LIKE %s OR 
+                    u.display_name LIKE %s OR
+                    um_store.meta_value LIKE %s
                 )
+                ORDER BY u.user_registered DESC
+            ";
+            
+            $user_ids = $wpdb->get_col($wpdb->prepare($user_ids_query, $search_like, $search_like, $search_like, $search_like));
+            $total = count($user_ids);
+            
+            error_log('🔍 WCFM Classification: IDs encontrados con búsqueda: ' . count($user_ids));
+            
+            // Aplicar paginación
+            $offset = ($page - 1) * $per_page;
+            $user_ids_page = array_slice($user_ids, $offset, $per_page);
+            
+            // Obtener usuarios por IDs
+            if (!empty($user_ids_page)) {
+                $args = array(
+                    'include' => $user_ids_page,
+                    'orderby' => 'include'
+                );
+                $user_query = new WP_User_Query($args);
+                $vendors = $user_query->get_results();
+            } else {
+                $vendors = array();
+            }
+        } else {
+            // Sin búsqueda, usar query estándar
+            $args = array(
+                'role' => 'wcfm_vendor',
+                'orderby' => 'registered',
+                'order' => 'DESC',
+                'number' => $per_page,
+                'offset' => ($page - 1) * $per_page
             );
+            
+            $user_query = new WP_User_Query($args);
+            $vendors = $user_query->get_results();
+            $total = $user_query->get_total();
         }
-        
-        // Obtener usuarios
-        $user_query = new WP_User_Query($args);
-        $vendors = $user_query->get_results();
-        $total = $user_query->get_total();
         
         error_log('📊 WCFM Classification: Encontrados ' . count($vendors) . ' vendors (Total: ' . $total . ')');
         
