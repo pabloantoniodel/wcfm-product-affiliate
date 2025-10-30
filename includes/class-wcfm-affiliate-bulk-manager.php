@@ -203,6 +203,26 @@ class WCFM_Affiliate_Bulk_Manager {
                 </div>
                 
                 <div class="wcfm-modal-body">
+                    <!-- Filtros de Clasificación -->
+                    <div class="vendor-classification-filters" style="margin-bottom: 20px; padding: 15px; background: #f6f7f7; border-radius: 4px;">
+                        <h4 style="margin: 0 0 12px 0; font-size: 14px; font-weight: 600; color: #2c3338;">
+                            <i class="fas fa-filter"></i> <?php _e('Filtrar por Clasificación:', 'wcfm-product-affiliate'); ?>
+                        </h4>
+                        <div style="display: flex; gap: 25px; align-items: center;">
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px;">
+                                <input type="checkbox" id="filter-comercio" class="classification-filter" value="comercio" checked style="width: 18px; height: 18px; cursor: pointer;" />
+                                <i class="fas fa-shopping-bag" style="color: #2271b1;"></i>
+                                <span><?php _e('Comercio', 'wcfm-product-affiliate'); ?></span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px;">
+                                <input type="checkbox" id="filter-comercial" class="classification-filter" value="comercial" checked style="width: 18px; height: 18px; cursor: pointer;" />
+                                <i class="fas fa-handshake" style="color: #2271b1;"></i>
+                                <span><?php _e('Comercial', 'wcfm-product-affiliate'); ?></span>
+                            </label>
+                            <span id="filter-count" style="margin-left: auto; font-size: 13px; color: #646970; font-weight: 500;"></span>
+                        </div>
+                    </div>
+                    
                     <div class="vendor-search-box">
                         <input type="text" id="vendor-search" placeholder="<?php _e('Buscar vendedor...', 'wcfm-product-affiliate'); ?>" />
                         <button type="button" id="search-vendors-btn" class="button">
@@ -517,19 +537,88 @@ class WCFM_Affiliate_Bulk_Manager {
         $page = isset($_POST['page']) ? intval($_POST['page']) : 1;
         $per_page = 10;
         
-        $args = array(
-            'role' => 'wcfm_vendor',
-            'number' => $per_page,
-            'offset' => ($page - 1) * $per_page,
-            'search' => '*' . $search . '*',
-            'search_columns' => array('user_login', 'user_email', 'display_name'),
-            'orderby' => 'registered',
-            'order' => 'DESC',
-        );
+        // Filtros de clasificación
+        $filter_comercio = isset($_POST['filter_comercio']) && $_POST['filter_comercio'] === 'true';
+        $filter_comercial = isset($_POST['filter_comercial']) && $_POST['filter_comercial'] === 'true';
         
-        $user_query = new WP_User_Query($args);
-        $vendors = $user_query->get_results();
-        $total = $user_query->get_total();
+        error_log('🔍 WCFM Bulk: Búsqueda vendors - Search: "' . $search . '" - Comercio: ' . ($filter_comercio ? 'Sí' : 'No') . ' - Comercial: ' . ($filter_comercial ? 'Sí' : 'No'));
+        
+        global $wpdb;
+        
+        // Query personalizada para incluir filtros de clasificación
+        $where_conditions = array("um_cap.meta_value LIKE '%wcfm_vendor%'");
+        $join_clauses = array();
+        $params = array();
+        
+        // Filtro de búsqueda
+        if (!empty($search)) {
+            $search_like = '%' . $wpdb->esc_like($search) . '%';
+            $where_conditions[] = "(
+                u.user_login LIKE %s OR 
+                u.user_email LIKE %s OR 
+                u.display_name LIKE %s OR
+                um_store.meta_value LIKE %s
+            )";
+            $params[] = $search_like;
+            $params[] = $search_like;
+            $params[] = $search_like;
+            $params[] = $search_like;
+            
+            $join_clauses[] = "LEFT JOIN {$wpdb->usermeta} um_store ON u.ID = um_store.user_id AND um_store.meta_key = 'store_name'";
+        }
+        
+        // Filtros de clasificación
+        if ($filter_comercio || $filter_comercial) {
+            if ($filter_comercio && !$filter_comercial) {
+                // Solo comercio
+                $where_conditions[] = "(um_comercio.meta_value = '1' OR um_comercio.meta_value IS NULL)";
+                $where_conditions[] = "(um_comercial.meta_value = '0' OR um_comercial.meta_value = '')";
+                $join_clauses[] = "LEFT JOIN {$wpdb->usermeta} um_comercio ON u.ID = um_comercio.user_id AND um_comercio.meta_key = 'wcfm_is_comercio'";
+                $join_clauses[] = "LEFT JOIN {$wpdb->usermeta} um_comercial ON u.ID = um_comercial.user_id AND um_comercial.meta_key = 'wcfm_is_comercial'";
+            } else if ($filter_comercial && !$filter_comercio) {
+                // Solo comercial
+                $where_conditions[] = "(um_comercio.meta_value = '0' OR um_comercio.meta_value = '')";
+                $where_conditions[] = "(um_comercial.meta_value = '1' OR um_comercial.meta_value IS NULL)";
+                $join_clauses[] = "LEFT JOIN {$wpdb->usermeta} um_comercio ON u.ID = um_comercio.user_id AND um_comercio.meta_key = 'wcfm_is_comercio'";
+                $join_clauses[] = "LEFT JOIN {$wpdb->usermeta} um_comercial ON u.ID = um_comercial.user_id AND um_comercial.meta_key = 'wcfm_is_comercial'";
+            }
+            // Si ambos están activos, no filtramos (muestra todos)
+        }
+        
+        // Construir query
+        $join_sql = implode(' ', array_unique($join_clauses));
+        $where_sql = implode(' AND ', $where_conditions);
+        
+        $count_query = "
+            SELECT COUNT(DISTINCT u.ID)
+            FROM {$wpdb->users} u
+            INNER JOIN {$wpdb->usermeta} um_cap ON u.ID = um_cap.user_id 
+                AND um_cap.meta_key = 'wp_capabilities'
+            {$join_sql}
+            WHERE {$where_sql}
+        ";
+        
+        $total = $wpdb->get_var(!empty($params) ? $wpdb->prepare($count_query, ...$params) : $count_query);
+        
+        // Query de datos
+        $offset = ($page - 1) * $per_page;
+        $data_query = "
+            SELECT DISTINCT u.ID, u.user_login, u.user_email, u.display_name, u.user_registered
+            FROM {$wpdb->users} u
+            INNER JOIN {$wpdb->usermeta} um_cap ON u.ID = um_cap.user_id 
+                AND um_cap.meta_key = 'wp_capabilities'
+            {$join_sql}
+            WHERE {$where_sql}
+            ORDER BY u.user_registered DESC
+            LIMIT {$per_page} OFFSET {$offset}
+        ";
+        
+        $vendor_data = $wpdb->get_results(!empty($params) ? $wpdb->prepare($data_query, ...$params) : $data_query);
+        
+        $vendors = array();
+        foreach ($vendor_data as $data) {
+            $vendors[] = get_user_by('ID', $data->ID);
+        }
         
         $results = array();
         foreach ($vendors as $vendor) {

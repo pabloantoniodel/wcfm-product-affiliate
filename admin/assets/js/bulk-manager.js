@@ -316,7 +316,25 @@ jQuery(document).ready(function($) {
         }
     });
     
+    // Filtros de clasificación - actualizar búsqueda al cambiar
+    $('.classification-filter').on('change', function() {
+        var filterComercio = $('#filter-comercio').is(':checked');
+        var filterComercial = $('#filter-comercial').is(':checked');
+        
+        console.log('🔄 Filtro cambiado - Comercio:', filterComercio, '- Comercial:', filterComercial);
+        
+        // Buscar automáticamente con los nuevos filtros
+        var search = $('#vendor-search').val();
+        searchVendors(search, 1);
+    });
+    
     function searchVendors(search, page) {
+        // Obtener filtros de clasificación
+        var filterComercio = $('#filter-comercio').is(':checked');
+        var filterComercial = $('#filter-comercial').is(':checked');
+        
+        console.log('🔍 Búsqueda vendors - Search:', search, '- Comercio:', filterComercio, '- Comercial:', filterComercial);
+        
         $.ajax({
             url: wcfmAffiliateBulk.ajaxurl,
             type: 'POST',
@@ -324,7 +342,9 @@ jQuery(document).ready(function($) {
                 action: 'wcfm_affiliate_search_vendors',
                 nonce: wcfmAffiliateBulk.nonce,
                 search: search,
-                page: page
+                page: page,
+                filter_comercio: filterComercio,
+                filter_comercial: filterComercial
             },
             beforeSend: function() {
                 $('#search-vendors-btn').prop('disabled', true).html('<span class="wcfm-spinner"></span>');
