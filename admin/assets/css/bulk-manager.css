@@ -1,0 +1,267 @@
+/**
+ * Bulk Affiliate Manager Styles
+ */
+
+.wcfm-affiliate-bulk-container {
+    max-width: 1400px;
+    margin: 20px 0;
+}
+
+/* Search Section */
+.wcfm-affiliate-search-section {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    margin-bottom: 30px;
+}
+
+.wcfm-affiliate-search-section h2 {
+    margin-top: 0;
+    color: #667eea;
+}
+
+.search-box {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.search-box input[type="text"] {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.search-box button {
+    padding: 10px 20px;
+}
+
+#search-results {
+    margin-top: 20px;
+}
+
+#search-results table {
+    margin-top: 10px;
+}
+
+/* Pool Section */
+.wcfm-affiliate-pool-section {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.pool-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.pool-header h2 {
+    margin: 0;
+    color: #667eea;
+}
+
+.pool-actions {
+    display: flex;
+    gap: 10px;
+}
+
+/* Table Styles */
+#products-pool-table img {
+    max-width: 50px;
+    height: auto;
+}
+
+.in-stock {
+    color: #46b450;
+    font-weight: bold;
+}
+
+.out-of-stock {
+    color: #dc3232;
+    font-weight: bold;
+}
+
+/* Modal Styles */
+.wcfm-modal {
+    display: none;
+    position: fixed;
+    z-index: 999999;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.5);
+}
+
+.wcfm-modal-content {
+    background-color: #fefefe;
+    margin: 5% auto;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    max-width: 800px;
+    animation: slideDown 0.3s ease;
+}
+
+.wcfm-modal-small {
+    max-width: 500px;
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.wcfm-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 25px;
+    border-bottom: 1px solid #e5e5e5;
+}
+
+.wcfm-modal-header h3 {
+    margin: 0;
+    color: #667eea;
+}
+
+.wcfm-modal-close {
+    font-size: 28px;
+    font-weight: bold;
+    color: #aaa;
+    cursor: pointer;
+    line-height: 20px;
+}
+
+.wcfm-modal-close:hover,
+.wcfm-modal-close:focus {
+    color: #000;
+}
+
+.wcfm-modal-body {
+    padding: 25px;
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.wcfm-modal-footer {
+    padding: 15px 25px;
+    border-top: 1px solid #e5e5e5;
+    text-align: right;
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+/* Vendor Search */
+.vendor-search-box {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.vendor-search-box input[type="text"] {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.vendor-pagination {
+    margin-top: 15px;
+    text-align: center;
+}
+
+.vendor-pagination button {
+    margin: 0 5px;
+}
+
+/* Products to Affiliate */
+.products-to-affiliate {
+    background: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 15px;
+    margin: 15px 0;
+}
+
+.products-to-affiliate h4 {
+    margin-top: 0;
+    color: #555;
+}
+
+.products-to-affiliate ul {
+    list-style: none;
+    padding: 0;
+    margin: 10px 0 0 0;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.products-to-affiliate li {
+    padding: 8px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.products-to-affiliate li:last-child {
+    border-bottom: none;
+}
+
+.products-to-affiliate li input[type="checkbox"] {
+    margin: 0;
+}
+
+/* Loading Spinner */
+.wcfm-spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(102, 126, 234, 0.3);
+    border-radius: 50%;
+    border-top-color: #667eea;
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .pool-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+    
+    .pool-actions {
+        width: 100%;
+        flex-direction: column;
+    }
+    
+    .pool-actions button {
+        width: 100%;
+    }
+    
+    .wcfm-modal-content {
+        margin: 10% 10px;
+        max-width: none;
+    }
+}
+
