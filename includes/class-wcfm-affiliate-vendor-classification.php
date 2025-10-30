@@ -274,8 +274,13 @@ class WCFM_Affiliate_Vendor_Classification {
         // check_ajax_referer('wcfm_vendor_classification_nonce', 'nonce');
         
         $vendor_id = isset($_POST['vendor_id']) ? intval($_POST['vendor_id']) : 0;
-        $is_comercio = isset($_POST['is_comercio']) ? (bool) $_POST['is_comercio'] : false;
-        $is_comercial = isset($_POST['is_comercial']) ? (bool) $_POST['is_comercial'] : false;
+        
+        // Convertir correctamente string "true"/"false" a booleano
+        $is_comercio = isset($_POST['is_comercio']) && ($_POST['is_comercio'] === 'true' || $_POST['is_comercio'] === true || $_POST['is_comercio'] === 1 || $_POST['is_comercio'] === '1');
+        $is_comercial = isset($_POST['is_comercial']) && ($_POST['is_comercial'] === 'true' || $_POST['is_comercial'] === true || $_POST['is_comercial'] === 1 || $_POST['is_comercial'] === '1');
+        
+        error_log('📥 WCFM Classification: POST recibido - vendor_id=' . $vendor_id . ', is_comercio=' . ($_POST['is_comercio'] ?? 'undefined') . ', is_comercial=' . ($_POST['is_comercial'] ?? 'undefined'));
+        error_log('📥 WCFM Classification: Convertido - is_comercio=' . ($is_comercio ? 'true' : 'false') . ', is_comercial=' . ($is_comercial ? 'true' : 'false'));
         
         if (!$vendor_id) {
             wp_send_json_error(array(
