@@ -580,6 +580,8 @@ class WCFM_Affiliate_Bulk_Manager {
             }
             
             // Crear afiliación
+            error_log('Intentando insertar afiliación: product_id=' . $product_id . ', vendor_id=' . $vendor_id);
+            
             $result = $wpdb->insert(
                 $table_name,
                 array(
@@ -592,9 +594,13 @@ class WCFM_Affiliate_Bulk_Manager {
             );
             
             if ($result) {
+                error_log('✅ Afiliación creada correctamente para producto ' . $product_id);
                 $success_count++;
             } else {
-                $errors[] = sprintf(__('Error al afiliar producto ID %d', 'wcfm-product-affiliate'), $product_id);
+                $error_msg = $wpdb->last_error ? $wpdb->last_error : 'Error desconocido';
+                error_log('❌ Error al insertar afiliación: ' . $error_msg);
+                error_log('SQL Query: ' . $wpdb->last_query);
+                $errors[] = sprintf(__('Error al afiliar producto ID %d: %s', 'wcfm-product-affiliate'), $product_id, $error_msg);
             }
         }
         
