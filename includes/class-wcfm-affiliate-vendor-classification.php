@@ -18,8 +18,8 @@ class WCFM_Affiliate_Vendor_Classification {
      * Constructor
      */
     public function __construct() {
-        // Añadir menú de administración
-        add_action('admin_menu', array($this, 'add_admin_menu'), 20);
+        // Añadir menú de administración (después del Bulk Manager que tiene prioridad 10)
+        add_action('admin_menu', array($this, 'add_admin_menu'), 25);
         
         // Encolar scripts
         add_action('admin_enqueue_scripts', array($this, 'enqueue_scripts'));
@@ -33,7 +33,9 @@ class WCFM_Affiliate_Vendor_Classification {
      * Añadir menú de administración
      */
     public function add_admin_menu() {
-        add_submenu_page(
+        error_log('🔧 WCFM Classification: Registrando menú...');
+        
+        $hook = add_submenu_page(
             'wcfm-affiliate-bulk',
             'Clasificación de Clientes',
             'Clasificación de Clientes',
@@ -41,6 +43,8 @@ class WCFM_Affiliate_Vendor_Classification {
             'clasificacion-clientes',
             array($this, 'render_page')
         );
+        
+        error_log('🔧 WCFM Classification: Hook registrado = ' . ($hook ? $hook : 'NULL'));
     }
     
     /**
