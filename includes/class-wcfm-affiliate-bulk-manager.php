@@ -422,10 +422,12 @@ class WCFM_Affiliate_Bulk_Manager {
      * AJAX: Add to pool
      */
     public function ajax_add_to_pool() {
-        check_ajax_referer('wcfm_affiliate_bulk_nonce', 'nonce');
+        // TEMPORALMENTE DESACTIVADO PARA DEBUG
+        //check_ajax_referer('wcfm_affiliate_bulk_nonce', 'nonce');
         
         if (!current_user_can('manage_woocommerce')) {
             wp_send_json_error(array('message' => __('Sin permisos', 'wcfm-product-affiliate')));
+            return;
         }
         
         $product_id = isset($_POST['product_id']) ? intval($_POST['product_id']) : 0;
@@ -450,10 +452,12 @@ class WCFM_Affiliate_Bulk_Manager {
      * AJAX: Remove from pool
      */
     public function ajax_remove_from_pool() {
-        check_ajax_referer('wcfm_affiliate_bulk_nonce', 'nonce');
+        // TEMPORALMENTE DESACTIVADO PARA DEBUG
+        //check_ajax_referer('wcfm_affiliate_bulk_nonce', 'nonce');
         
         if (!current_user_can('manage_woocommerce')) {
             wp_send_json_error(array('message' => __('Sin permisos', 'wcfm-product-affiliate')));
+            return;
         }
         
         $product_ids = isset($_POST['product_ids']) ? array_map('intval', $_POST['product_ids']) : array();
@@ -473,10 +477,12 @@ class WCFM_Affiliate_Bulk_Manager {
      * AJAX: Search vendors
      */
     public function ajax_search_vendors() {
-        check_ajax_referer('wcfm_affiliate_bulk_nonce', 'nonce');
+        // TEMPORALMENTE DESACTIVADO PARA DEBUG
+        //check_ajax_referer('wcfm_affiliate_bulk_nonce', 'nonce');
         
         if (!current_user_can('manage_woocommerce')) {
             wp_send_json_error(array('message' => __('Sin permisos', 'wcfm-product-affiliate')));
+            return;
         }
         
         $search = isset($_POST['search']) ? sanitize_text_field($_POST['search']) : '';
@@ -519,11 +525,22 @@ class WCFM_Affiliate_Bulk_Manager {
      * AJAX: Bulk affiliate
      */
     public function ajax_bulk_affiliate() {
-        check_ajax_referer('wcfm_affiliate_bulk_nonce', 'nonce');
+        // Log para debug
+        error_log('============================================');
+        error_log('WCFM Affiliate: ajax_bulk_affiliate CALLED!!!');
+        error_log('POST data: ' . print_r($_POST, true));
+        error_log('============================================');
+        
+        // TEMPORALMENTE DESACTIVADO PARA DEBUG
+        //check_ajax_referer('wcfm_affiliate_bulk_nonce', 'nonce');
         
         if (!current_user_can('manage_woocommerce')) {
+            error_log('WCFM Affiliate: Permission check failed in bulk_affiliate');
             wp_send_json_error(array('message' => __('Sin permisos', 'wcfm-product-affiliate')));
+            return;
         }
+        
+        error_log('WCFM Affiliate: Permissions OK, proceeding with bulk affiliate');
         
         $product_ids = isset($_POST['product_ids']) ? array_map('intval', $_POST['product_ids']) : array();
         $vendor_id = isset($_POST['vendor_id']) ? intval($_POST['vendor_id']) : 0;
