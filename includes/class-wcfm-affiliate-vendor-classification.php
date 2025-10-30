@@ -51,10 +51,15 @@ class WCFM_Affiliate_Vendor_Classification {
      * Encolar scripts y estilos
      */
     public function enqueue_scripts($hook) {
+        error_log('🎨 WCFM Classification: enqueue_scripts called - Hook: ' . $hook);
+        
         // El hook correcto es: productos-afiliados_page_clasificacion-clientes
         if ($hook !== 'productos-afiliados_page_clasificacion-clientes') {
+            error_log('⏭️ WCFM Classification: Hook no coincide, saltando...');
             return;
         }
+        
+        error_log('✅ WCFM Classification: Cargando CSS y JS...');
         
         wp_enqueue_style(
             'wcfm-vendor-classification',
