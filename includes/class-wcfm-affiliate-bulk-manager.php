@@ -282,7 +282,7 @@ class WCFM_Affiliate_Bulk_Manager {
         ?>
         <tr data-product-id="<?php echo esc_attr($product_id); ?>">
             <td class="check-column">
-                <input type="checkbox" class="product-checkbox" value="<?php echo esc_attr($product_id); ?>" />
+                <input type="checkbox" class="product-checkbox" value="<?php echo esc_attr($product_id); ?>" checked />
             </td>
             <td><?php echo $product->get_image('thumbnail'); ?></td>
             <td>

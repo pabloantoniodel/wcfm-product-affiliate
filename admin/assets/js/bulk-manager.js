@@ -11,6 +11,16 @@ jQuery(document).ready(function($) {
     var selectedVendor = null;
     var selectedProducts = [];
     
+    // Marcar "Seleccionar Todos" si todos están marcados al cargar
+    function updateSelectAllCheckbox() {
+        var totalCheckboxes = $('.product-checkbox').length;
+        var checkedCheckboxes = $('.product-checkbox:checked').length;
+        $('#select-all-products').prop('checked', totalCheckboxes > 0 && totalCheckboxes === checkedCheckboxes);
+    }
+    
+    // Ejecutar al cargar
+    updateSelectAllCheckbox();
+    
     // ==========================================
     // BÚSQUEDA DE PRODUCTOS
     // ==========================================
@@ -179,6 +189,11 @@ jQuery(document).ready(function($) {
     
     $('#select-all-products').on('change', function() {
         $('.product-checkbox').prop('checked', $(this).is(':checked'));
+    });
+    
+    // Actualizar "Seleccionar Todos" cuando se marque/desmarque un checkbox individual
+    $(document).on('change', '.product-checkbox', function() {
+        updateSelectAllCheckbox();
     });
     
     // ==========================================
