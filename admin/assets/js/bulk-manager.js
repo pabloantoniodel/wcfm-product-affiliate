@@ -428,21 +428,29 @@ jQuery(document).ready(function($) {
     // ==========================================
     
     $('#confirm-affiliate-btn').on('click', function() {
+        console.log('🔘 Click en Confirmar Afiliación');
+        
         var finalProducts = [];
         $('.product-affiliate-checkbox:checked').each(function() {
             finalProducts.push($(this).val());
         });
         
+        console.log('Productos finales seleccionados:', finalProducts);
+        console.log('Vendedor seleccionado:', selectedVendor);
+        
         if (finalProducts.length === 0) {
-            alert(wcfmAffiliateBulk.i18n.selectProducts);
+            console.warn('⚠️ No hay productos seleccionados');
+            alert('Por favor selecciona al menos un producto');
             return;
         }
         
         if (!selectedVendor) {
-            alert(wcfmAffiliateBulk.i18n.selectVendor);
+            console.warn('⚠️ No hay vendedor seleccionado');
+            alert('Por favor selecciona un vendedor');
             return;
         }
         
+        console.log('✅ Validaciones OK, llamando a bulkAffiliate');
         bulkAffiliate(finalProducts, selectedVendor.id);
     });
     
