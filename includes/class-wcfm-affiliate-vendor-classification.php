@@ -251,16 +251,13 @@ class WCFM_Affiliate_Vendor_Classification {
         
         foreach ($vendors as $vendor) {
             // Obtener clasificaciones actuales
-            $is_comercio = get_user_option('wcfm_is_comercio', $vendor->ID);
-            $is_comercial = get_user_option('wcfm_is_comercial', $vendor->ID);
+            $is_comercio_raw = get_user_meta($vendor->ID, 'wcfm_is_comercio', true);
+            $is_comercial_raw = get_user_meta($vendor->ID, 'wcfm_is_comercial', true);
             
-            // Por defecto, ambos son true si no están definidos
-            if ($is_comercio === false) {
-                $is_comercio = true;
-            }
-            if ($is_comercial === false) {
-                $is_comercial = true;
-            }
+            // Por defecto, ambos son true si no están definidos ('' = no existe el meta)
+            // Si existe y es '0', entonces es false. Si es '1' o no existe, es true
+            $is_comercio = ($is_comercio_raw === '' || $is_comercio_raw === '1');
+            $is_comercial = ($is_comercial_raw === '' || $is_comercial_raw === '1');
             
             // Obtener store_name
             $store_name = get_user_meta($vendor->ID, 'store_name', true);
@@ -327,15 +324,15 @@ class WCFM_Affiliate_Vendor_Classification {
         
         error_log('💾 WCFM Classification: Actualizando vendor #' . $vendor_id . ' - Comercio: ' . ($is_comercio ? 'Sí' : 'No') . ' - Comercial: ' . ($is_comercial ? 'Sí' : 'No'));
         
-        // Guardar clasificaciones en user_option
-        update_user_option($vendor_id, 'wcfm_is_comercio', $is_comercio);
-        update_user_option($vendor_id, 'wcfm_is_comercial', $is_comercial);
+        // Guardar clasificaciones en user_meta como string '1' o '0'
+        update_user_meta($vendor_id, 'wcfm_is_comercio', $is_comercio ? '1' : '0');
+        update_user_meta($vendor_id, 'wcfm_is_comercial', $is_comercial ? '1' : '0');
         
         // Verificar que se guardó correctamente
-        $saved_comercio = get_user_option('wcfm_is_comercio', $vendor_id);
-        $saved_comercial = get_user_option('wcfm_is_comercial', $vendor_id);
+        $saved_comercio = get_user_meta($vendor_id, 'wcfm_is_comercio', true);
+        $saved_comercial = get_user_meta($vendor_id, 'wcfm_is_comercial', true);
         
-        error_log('✅ WCFM Classification: Guardado - Comercio: ' . ($saved_comercio ? 'Sí' : 'No') . ' - Comercial: ' . ($saved_comercial ? 'Sí' : 'No'));
+        error_log('✅ WCFM Classification: Guardado en DB - Comercio: "' . $saved_comercio . '" - Comercial: "' . $saved_comercial . '"');
         
         wp_send_json_success(array(
             'message' => 'Clasificación actualizada correctamente',
