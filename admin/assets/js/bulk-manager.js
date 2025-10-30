@@ -347,14 +347,15 @@ jQuery(document).ready(function($) {
         $tbody.empty();
         
         if (data.vendors.length === 0) {
-            $tbody.append('<tr><td colspan="4" style="text-align:center;">No se encontraron vendedores</td></tr>');
+            $tbody.append('<tr><td colspan="5" style="text-align:center;">No se encontraron vendedores</td></tr>');
         } else {
             data.vendors.forEach(function(vendor) {
                 var $row = $('<tr>');
+                $row.append('<td class="check-column"><input type="checkbox" class="vendor-checkbox" value="' + vendor.id + '" data-vendor-name="' + vendor.name + '" /></td>');
                 $row.append('<td><strong>' + vendor.name + '</strong></td>');
                 $row.append('<td>' + vendor.email + '</td>');
                 $row.append('<td>' + vendor.products + '</td>');
-                $row.append('<td><button type="button" class="button button-primary button-small select-vendor" data-vendor-id="' + vendor.id + '" data-vendor-name="' + vendor.name + '">Seleccionar</button></td>');
+                $row.append('<td>' + vendor.registered + '</td>');
                 $tbody.append($row);
             });
         }
@@ -387,7 +388,84 @@ jQuery(document).ready(function($) {
     });
     
     // ==========================================
-    // SELECCIONAR VENDEDOR
+    // SELECCIONAR TODOS VENDEDORES
+    // ==========================================
+    
+    $('#select-all-vendors').on('change', function() {
+        $('.vendor-checkbox').prop('checked', $(this).is(':checked'));
+    });
+    
+    // ==========================================
+    // AFILIAR A VENDEDORES SELECCIONADOS
+    // ==========================================
+    
+    $('#affiliate-to-selected-vendors-btn').on('click', function() {
+        var selectedVendorIds = [];
+        var selectedVendorNames = [];
+        
+        $('.vendor-checkbox:checked').each(function() {
+            selectedVendorIds.push($(this).val());
+            selectedVendorNames.push($(this).data('vendor-name'));
+        });
+        
+        if (selectedVendorIds.length === 0) {
+            alert('Por favor selecciona al menos un vendedor');
+            return;
+        }
+        
+        // Confirmar afiliación múltiple
+        var confirm_msg = '¿Afiliar ' + selectedProducts.length + ' producto(s) a ' + selectedVendorIds.length + ' vendedor(es)?\\n\\n';
+        confirm_msg += 'Vendedores: ' + selectedVendorNames.join(', ');
+        
+        if (!confirm(confirm_msg)) {
+            return;
+        }
+        
+        // Cerrar modal de vendedores
+        $('#vendor-select-modal').fadeOut(300);
+        
+        // Afiliar a cada vendedor
+        affiliateToMultipleVendors(selectedVendorIds);
+    });
+    
+    function affiliateToMultipleVendors(vendorIds) {
+        var totalVendors = vendorIds.length;
+        var completedVendors = 0;
+        var successCount = 0;
+        var allErrors = [];
+        
+        function affiliateNext(index) {
+            if (index >= vendorIds.length) {
+                // Terminado
+                var message = 'Afiliación completada:\\n';
+                message += successCount + ' de ' + totalVendors + ' vendedores procesados correctamente';
+                
+                if (allErrors.length > 0) {
+                    message += '\\n\\nErrores:\\n' + allErrors.join('\\n');
+                }
+                
+                alert(message);
+                location.reload();
+                return;
+            }
+            
+            var vendorId = vendorIds[index];
+            
+            bulkAffiliate(selectedProducts, vendorId, function(success) {
+                if (success) {
+                    successCount++;
+                } else {
+                    allErrors.push('Vendedor ID ' + vendorId + ': Error');
+                }
+                affiliateNext(index + 1);
+            });
+        }
+        
+        affiliateNext(0);
+    }
+    
+    // ==========================================
+    // SELECCIONAR VENDEDOR (método antiguo individual)
     // ==========================================
     
     $(document).on('click', '.select-vendor', function() {
@@ -454,7 +532,7 @@ jQuery(document).ready(function($) {
         bulkAffiliate(finalProducts, selectedVendor.id);
     });
     
-    function bulkAffiliate(productIds, vendorId) {
+    function bulkAffiliate(productIds, vendorId, callback) {
         console.log('🚀 Iniciando afiliación masiva');
         console.log('Product IDs:', productIds);
         console.log('Vendor ID:', vendorId);
@@ -470,26 +548,40 @@ jQuery(document).ready(function($) {
             },
             beforeSend: function() {
                 console.log('📤 Enviando afiliación...');
-                $('#confirm-affiliate-btn').prop('disabled', true).html('<span class="wcfm-spinner"></span> Procesando...');
+                if (!callback) {
+                    $('#confirm-affiliate-btn').prop('disabled', true).html('<span class="wcfm-spinner"></span> Procesando...');
+                }
             },
             success: function(response) {
                 console.log('📥 Respuesta afiliación:', response);
-                if (response.success) {
-                    alert(response.data.message || 'Productos afiliados correctamente');
-                    location.reload();
+                if (callback) {
+                    // Modo callback (para afiliación múltiple)
+                    callback(response.success);
                 } else {
-                    alert(response.data.message || 'Error al afiliar productos');
+                    // Modo normal (un solo vendedor)
+                    if (response.success) {
+                        alert(response.data.message || 'Productos afiliados correctamente');
+                        location.reload();
+                    } else {
+                        alert(response.data.message || 'Error al afiliar productos');
+                    }
                 }
             },
             error: function(xhr, status, error) {
                 console.error('❌ Error AJAX afiliación:', error);
                 console.error('Status:', status);
                 console.error('Response:', xhr.responseText);
-                alert('Error de conexión al afiliar: ' + error);
+                if (callback) {
+                    callback(false);
+                } else {
+                    alert('Error de conexión al afiliar: ' + error);
+                }
             },
             complete: function() {
                 console.log('✔️ Afiliación completada');
-                $('#confirm-affiliate-btn').prop('disabled', false).html('Aceptar y Afiliar');
+                if (!callback) {
+                    $('#confirm-affiliate-btn').prop('disabled', false).html('Aceptar y Afiliar');
+                }
             }
         });
     }

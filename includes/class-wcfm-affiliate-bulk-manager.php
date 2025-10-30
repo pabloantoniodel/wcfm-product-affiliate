@@ -214,10 +214,11 @@ class WCFM_Affiliate_Bulk_Manager {
                         <table class="wp-list-table widefat fixed striped">
                             <thead>
                                 <tr>
+                                    <th class="check-column"><input type="checkbox" id="select-all-vendors" /></th>
                                     <th><?php _e('Vendedor', 'wcfm-product-affiliate'); ?></th>
                                     <th><?php _e('Email', 'wcfm-product-affiliate'); ?></th>
                                     <th><?php _e('Productos', 'wcfm-product-affiliate'); ?></th>
-                                    <th><?php _e('Acción', 'wcfm-product-affiliate'); ?></th>
+                                    <th><?php _e('Fecha Registro', 'wcfm-product-affiliate'); ?></th>
                                 </tr>
                             </thead>
                             <tbody id="vendors-list-body"></tbody>
@@ -230,6 +231,9 @@ class WCFM_Affiliate_Bulk_Manager {
                 <div class="wcfm-modal-footer">
                     <button type="button" id="cancel-vendor-btn" class="button">
                         <?php _e('Cancelar', 'wcfm-product-affiliate'); ?>
+                    </button>
+                    <button type="button" id="affiliate-to-selected-vendors-btn" class="button button-primary">
+                        <?php _e('Afiliar a Seleccionados', 'wcfm-product-affiliate'); ?>
                     </button>
                 </div>
             </div>
@@ -495,6 +499,8 @@ class WCFM_Affiliate_Bulk_Manager {
             'offset' => ($page - 1) * $per_page,
             'search' => '*' . $search . '*',
             'search_columns' => array('user_login', 'user_email', 'display_name'),
+            'orderby' => 'registered',
+            'order' => 'DESC',
         );
         
         $user_query = new WP_User_Query($args);
@@ -504,12 +510,14 @@ class WCFM_Affiliate_Bulk_Manager {
         $results = array();
         foreach ($vendors as $vendor) {
             $product_count = count_user_posts($vendor->ID, 'product');
+            $registered = get_date_from_gmt($vendor->user_registered, 'd/m/Y');
             
             $results[] = array(
                 'id' => $vendor->ID,
                 'name' => $vendor->display_name,
                 'email' => $vendor->user_email,
                 'products' => $product_count,
+                'registered' => $registered,
             );
         }
         
@@ -608,16 +616,20 @@ class WCFM_Affiliate_Bulk_Manager {
             }
         }
         
-        // NO remover del pool - el admin puede querer afiliar a otros vendedores
-        // El pool es independiente de las afiliaciones individuales
+        // NO remover del pool - es una tabla de referencia permanente
+        // El admin puede afiliar los mismos productos a múltiples vendedores
         
         $message = sprintf(
-            __('%d productos afiliados correctamente', 'wcfm-product-affiliate'),
+            __('%d productos afiliados correctamente al vendedor', 'wcfm-product-affiliate'),
             $success_count
         );
         
+        if ($success_count > 0) {
+            $message .= '<br><br><em>' . __('Nota: Los productos permanecen en el pool para poder afiliarlos a otros vendedores.', 'wcfm-product-affiliate') . '</em>';
+        }
+        
         if (!empty($errors)) {
-            $message .= '<br><strong>' . __('Errores:', 'wcfm-product-affiliate') . '</strong><br>' . implode('<br>', $errors);
+            $message .= '<br><br><strong>' . __('Errores:', 'wcfm-product-affiliate') . '</strong><br>' . implode('<br>', $errors);
         }
         
         wp_send_json_success(array(
