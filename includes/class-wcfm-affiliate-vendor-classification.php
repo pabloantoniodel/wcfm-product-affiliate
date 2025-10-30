@@ -34,10 +34,10 @@ class WCFM_Affiliate_Vendor_Classification {
      */
     public function add_admin_menu() {
         add_submenu_page(
-            'productos-afiliados',
+            'wcfm-affiliate-bulk',
             'Clasificación de Clientes',
             'Clasificación de Clientes',
-            'manage_options',
+            'manage_woocommerce',
             'clasificacion-clientes',
             array($this, 'render_page')
         );
@@ -47,7 +47,9 @@ class WCFM_Affiliate_Vendor_Classification {
      * Encolar scripts y estilos
      */
     public function enqueue_scripts($hook) {
-        if ($hook !== 'productos-afiliados_page_clasificacion-clientes') {
+        if ($hook !== 'productos-afiliados_page_clasificacion-clientes' && 
+            $hook !== 'toplevel_page_wcfm-affiliate-bulk' &&
+            $hook !== 'admin_page_clasificacion-clientes') {
             return;
         }
         
