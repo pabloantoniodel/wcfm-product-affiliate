@@ -447,6 +447,10 @@ jQuery(document).ready(function($) {
     });
     
     function bulkAffiliate(productIds, vendorId) {
+        console.log('🚀 Iniciando afiliación masiva');
+        console.log('Product IDs:', productIds);
+        console.log('Vendor ID:', vendorId);
+        
         $.ajax({
             url: wcfmAffiliateBulk.ajaxurl,
             type: 'POST',
@@ -457,17 +461,26 @@ jQuery(document).ready(function($) {
                 vendor_id: vendorId
             },
             beforeSend: function() {
+                console.log('📤 Enviando afiliación...');
                 $('#confirm-affiliate-btn').prop('disabled', true).html('<span class="wcfm-spinner"></span> Procesando...');
             },
             success: function(response) {
+                console.log('📥 Respuesta afiliación:', response);
                 if (response.success) {
-                    alert(response.data.message || wcfmAffiliateBulk.i18n.success);
+                    alert(response.data.message || 'Productos afiliados correctamente');
                     location.reload();
                 } else {
-                    alert(response.data.message || wcfmAffiliateBulk.i18n.error);
+                    alert(response.data.message || 'Error al afiliar productos');
                 }
             },
+            error: function(xhr, status, error) {
+                console.error('❌ Error AJAX afiliación:', error);
+                console.error('Status:', status);
+                console.error('Response:', xhr.responseText);
+                alert('Error de conexión al afiliar: ' + error);
+            },
             complete: function() {
+                console.log('✔️ Afiliación completada');
                 $('#confirm-affiliate-btn').prop('disabled', false).html('Aceptar y Afiliar');
             }
         });
