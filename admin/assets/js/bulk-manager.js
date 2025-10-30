@@ -5,6 +5,9 @@
 jQuery(document).ready(function($) {
     'use strict';
     
+    console.log('✅ Bulk Affiliate Manager JS cargado');
+    console.log('wcfmAffiliateBulk:', wcfmAffiliateBulk);
+    
     var selectedVendor = null;
     var selectedProducts = [];
     
@@ -25,6 +28,9 @@ jQuery(document).ready(function($) {
     });
     
     function searchProducts(search) {
+        console.log('🔍 Buscando productos:', search);
+        console.log('AJAX URL:', wcfmAffiliateBulk.ajaxurl);
+        
         $.ajax({
             url: wcfmAffiliateBulk.ajaxurl,
             type: 'POST',
@@ -34,17 +40,28 @@ jQuery(document).ready(function($) {
                 search: search
             },
             beforeSend: function() {
+                console.log('📤 Enviando búsqueda...');
                 $('#search-products-btn').prop('disabled', true).html('<span class="wcfm-spinner"></span>');
             },
             success: function(response) {
+                console.log('📥 Respuesta recibida:', response);
                 if (response.success) {
+                    console.log('✅ Productos encontrados:', response.data.products.length);
                     displaySearchResults(response.data.products);
                 } else {
-                    alert(response.data.message || wcfmAffiliateBulk.i18n.error);
+                    console.error('❌ Error:', response.data.message);
+                    alert(response.data.message || 'Error al buscar productos');
                 }
             },
+            error: function(xhr, status, error) {
+                console.error('❌ Error AJAX:', error);
+                console.error('Status:', status);
+                console.error('Response:', xhr.responseText);
+                alert('Error de conexión: ' + error);
+            },
             complete: function() {
-                $('#search-products-btn').prop('disabled', false).html(wcfmAffiliateBulk.i18n.search || 'Buscar');
+                console.log('✔️ Búsqueda completada');
+                $('#search-products-btn').prop('disabled', false).text('Buscar');
             }
         });
     }
