@@ -51,27 +51,8 @@ class WCFM_Affiliate_Vendor_Classification {
      * Encolar scripts y estilos
      */
     public function enqueue_scripts($hook) {
-        // Verificar si estamos en la página de clasificación
-        $current_screen = get_current_screen();
-        
-        // Debug
-        error_log('WCFM Classification: Hook = ' . $hook);
-        if ($current_screen) {
-            error_log('WCFM Classification: Screen ID = ' . $current_screen->id);
-        }
-        
-        // Verificar por página GET o screen ID
-        $is_classification_page = false;
-        
-        if (isset($_GET['page']) && $_GET['page'] === 'clasificacion-clientes') {
-            $is_classification_page = true;
-        }
-        
-        if ($current_screen && strpos($current_screen->id, 'clasificacion-clientes') !== false) {
-            $is_classification_page = true;
-        }
-        
-        if (!$is_classification_page) {
+        // El hook correcto es: productos-afiliados_page_clasificacion-clientes
+        if ($hook !== 'productos-afiliados_page_clasificacion-clientes') {
             return;
         }
         
