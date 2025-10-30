@@ -46,6 +46,7 @@ class WCFM_Affiliate_DB {
             `commission_rate` decimal(5,2) DEFAULT 20.00,
             `commission_type` varchar(20) DEFAULT 'percentage',
             `status` varchar(20) DEFAULT 'active',
+            `is_active` tinyint(1) NOT NULL DEFAULT 1,
             `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
             `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY (`id`),
@@ -53,7 +54,8 @@ class WCFM_Affiliate_DB {
             KEY `vendor_id` (`vendor_id`),
             KEY `product_id` (`product_id`),
             KEY `product_owner_id` (`product_owner_id`),
-            KEY `status` (`status`)
+            KEY `status` (`status`),
+            KEY `is_active` (`is_active`)
         ) $charset_collate;";
         
         // Table for tracking affiliate sales

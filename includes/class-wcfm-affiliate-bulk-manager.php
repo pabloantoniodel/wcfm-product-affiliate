@@ -728,8 +728,12 @@ class WCFM_Affiliate_Bulk_Manager {
             // Obtener el propietario original del producto
             $product_owner_id = get_post_field('post_author', $product_id);
             
+            // Verificar si el producto está publicado
+            $product_status = get_post_status($product_id);
+            $is_active = ($product_status === 'publish') ? 1 : 0;
+            
             // Crear afiliación
-            error_log('Intentando insertar afiliación: product_id=' . $product_id . ', vendor_id=' . $vendor_id . ', owner_id=' . $product_owner_id);
+            error_log('Intentando insertar afiliación: product_id=' . $product_id . ', vendor_id=' . $vendor_id . ', owner_id=' . $product_owner_id . ', is_active=' . $is_active);
             
             $result = $wpdb->insert(
                 $table_name,
@@ -738,9 +742,10 @@ class WCFM_Affiliate_Bulk_Manager {
                     'product_id' => $product_id,
                     'product_owner_id' => $product_owner_id,
                     'status' => 'active',
+                    'is_active' => $is_active,
                     'created_at' => current_time('mysql'),
                 ),
-                array('%d', '%d', '%d', '%s', '%s')
+                array('%d', '%d', '%d', '%s', '%d', '%s')
             );
             
             if ($result) {

@@ -3,7 +3,7 @@
  * Plugin Name: WCFM Product Affiliate
  * Plugin URI: https://ciudadvirtual.app
  * Description: Sistema de afiliación de productos para WCFM Marketplace. Permite a los vendedores vender productos de otros sin clonarlos, con comisiones duales y tracking de origen.
- * Version: 1.3.1
+ * Version: 1.4.0
  * Author: CiudadVirtual
  * Author URI: https://ciudadvirtual.app
  * Text Domain: wcfm-product-affiliate
@@ -24,7 +24,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Plugin constants
-define('WCFM_AFFILIATE_VERSION', '1.3.1');
+define('WCFM_AFFILIATE_VERSION', '1.4.0');
 define('WCFM_AFFILIATE_PLUGIN_FILE', __FILE__);
 define('WCFM_AFFILIATE_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('WCFM_AFFILIATE_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -131,6 +131,7 @@ class WCFM_Product_Affiliate {
         require_once WCFM_AFFILIATE_PLUGIN_DIR . 'includes/class-wcfm-affiliate-tracking.php';
         require_once WCFM_AFFILIATE_PLUGIN_DIR . 'includes/class-wcfm-affiliate-link-tracking.php';
         require_once WCFM_AFFILIATE_PLUGIN_DIR . 'includes/class-wcfm-affiliate-commission.php';
+        require_once WCFM_AFFILIATE_PLUGIN_DIR . 'includes/class-wcfm-affiliate-product-status.php';
         
         // Frontend
         if (!is_admin() || defined('DOING_AJAX')) {
