@@ -286,6 +286,18 @@ class WCFM_Affiliate_Bulk_Manager {
         $vendor_id = get_post_field('post_author', $product_id);
         $vendor = get_userdata($vendor_id);
         
+        // Obtener nombre de la tienda
+        $store_name = get_user_meta($vendor_id, 'store_name', true);
+        if (empty($store_name)) {
+            $store_name = $vendor->display_name;
+        }
+        
+        // Combinar nombre de tienda y usuario
+        $vendor_full_name = $store_name;
+        if ($store_name !== $vendor->display_name) {
+            $vendor_full_name .= ' (' . $vendor->display_name . ')';
+        }
+        
         ?>
         <tr data-product-id="<?php echo esc_attr($product_id); ?>">
             <td class="check-column">
@@ -296,7 +308,7 @@ class WCFM_Affiliate_Bulk_Manager {
                 <strong><?php echo esc_html($product->get_name()); ?></strong><br>
                 <small>ID: <?php echo $product_id; ?></small>
             </td>
-            <td><?php echo esc_html($vendor->display_name); ?></td>
+            <td><?php echo esc_html($vendor_full_name); ?></td>
             <td><?php echo $product->get_price_html(); ?></td>
             <td>
                 <?php if ($product->is_in_stock()) : ?>
@@ -399,10 +411,22 @@ class WCFM_Affiliate_Bulk_Manager {
                     $vendor_id = get_post_field('post_author', get_the_ID());
                     $vendor = get_userdata($vendor_id);
                     
+                    // Obtener nombre de la tienda
+                    $store_name = get_user_meta($vendor_id, 'store_name', true);
+                    if (empty($store_name)) {
+                        $store_name = $vendor ? $vendor->display_name : 'Desconocido';
+                    }
+                    
+                    // Combinar nombre de tienda y usuario
+                    $vendor_full_name = $store_name;
+                    if ($vendor && $store_name !== $vendor->display_name) {
+                        $vendor_full_name .= ' (' . $vendor->display_name . ')';
+                    }
+                    
                     $results[] = array(
                         'id' => get_the_ID(),
                         'name' => $product->get_name(),
-                        'vendor' => $vendor ? $vendor->display_name : 'Desconocido',
+                        'vendor' => $vendor_full_name,
                         'price' => $product->get_price_html(),
                         'image' => $product->get_image('thumbnail'),
                     );
@@ -512,9 +536,23 @@ class WCFM_Affiliate_Bulk_Manager {
             $product_count = count_user_posts($vendor->ID, 'product');
             $registered = get_date_from_gmt($vendor->user_registered, 'd/m/Y');
             
+            // Obtener nombre de la tienda
+            $store_name = get_user_meta($vendor->ID, 'store_name', true);
+            if (empty($store_name)) {
+                $store_name = $vendor->display_name;
+            }
+            
+            // Combinar nombre de tienda y usuario
+            $full_name = $store_name;
+            if ($store_name !== $vendor->display_name) {
+                $full_name .= ' (' . $vendor->display_name . ')';
+            }
+            
             $results[] = array(
                 'id' => $vendor->ID,
-                'name' => $vendor->display_name,
+                'name' => $full_name,
+                'store_name' => $store_name,
+                'user_name' => $vendor->display_name,
                 'email' => $vendor->user_email,
                 'products' => $product_count,
                 'registered' => $registered,
