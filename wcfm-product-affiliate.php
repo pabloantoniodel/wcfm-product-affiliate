@@ -137,10 +137,14 @@ class WCFM_Product_Affiliate {
             require_once WCFM_AFFILIATE_PLUGIN_DIR . 'includes/class-wcfm-affiliate-frontend.php';
         }
         
-        // Admin
-        if (is_admin()) {
-            require_once WCFM_AFFILIATE_PLUGIN_DIR . 'includes/class-wcfm-affiliate-admin.php';
+        // Admin y AJAX
+        if (is_admin() || defined('DOING_AJAX')) {
             require_once WCFM_AFFILIATE_PLUGIN_DIR . 'includes/class-wcfm-affiliate-bulk-manager.php';
+        }
+        
+        // Solo Admin (no AJAX)
+        if (is_admin() && !defined('DOING_AJAX')) {
+            require_once WCFM_AFFILIATE_PLUGIN_DIR . 'includes/class-wcfm-affiliate-admin.php';
         }
         
         // ============================================
@@ -173,9 +177,12 @@ class WCFM_Product_Affiliate {
             $this->frontend = new WCFM_Affiliate_Frontend();
         }
         
-        if (is_admin()) {
-            $this->admin = new WCFM_Affiliate_Admin();
+        if (is_admin() || defined('DOING_AJAX')) {
             $this->bulk_manager = new WCFM_Affiliate_Bulk_Manager();
+        }
+        
+        if (is_admin() && !defined('DOING_AJAX')) {
+            $this->admin = new WCFM_Affiliate_Admin();
         }
         
         // Inicializar bloqueador de productos afiliados (solo si está activado)
