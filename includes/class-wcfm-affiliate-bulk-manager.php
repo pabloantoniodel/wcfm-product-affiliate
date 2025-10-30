@@ -568,28 +568,32 @@ class WCFM_Affiliate_Bulk_Manager {
         }
         
         // Filtros de clasificación
-        // IMPORTANTE: Si el meta NO existe, significa que es TRUE por defecto
-        if (!$filter_comercio || !$filter_comercial) {
-            $join_clauses[] = "LEFT JOIN {$wpdb->usermeta} um_comercio ON u.ID = um_comercio.user_id AND um_comercio.meta_key = 'wcfm_is_comercio'";
-            $join_clauses[] = "LEFT JOIN {$wpdb->usermeta} um_comercial ON u.ID = um_comercial.user_id AND um_comercial.meta_key = 'wcfm_is_comercial'";
-            
-            if ($filter_comercio && !$filter_comercial) {
-                // Solo mostrar comercios (is_comercio = true)
-                // NULL o '1' significa comercio activo
-                $where_conditions[] = "(um_comercio.meta_value IS NULL OR um_comercio.meta_value = '1')";
-                // is_comercial debe ser false (explícitamente marcado como 0)
-                $where_conditions[] = "um_comercial.meta_value = '0'";
-            } else if ($filter_comercial && !$filter_comercio) {
-                // Solo mostrar comerciales (is_comercial = true)
-                // is_comercio debe ser false (explícitamente marcado como 0)
-                $where_conditions[] = "um_comercio.meta_value = '0'";
-                // NULL o '1' significa comercial activo
-                $where_conditions[] = "(um_comercial.meta_value IS NULL OR um_comercial.meta_value = '1')";
-            } else if (!$filter_comercio && !$filter_comercial) {
-                // Ninguno seleccionado = no mostrar nada
-                $where_conditions[] = "1 = 0";
-            }
-            // Si ambos están activos, no añadimos condiciones (muestra todos)
+        // LÓGICA: Checkbox MARCADO = MOSTRAR ese tipo
+        //         Checkbox DESMARCADO = OCULTAR ese tipo
+        
+        $join_clauses[] = "LEFT JOIN {$wpdb->usermeta} um_comercio ON u.ID = um_comercio.user_id AND um_comercio.meta_key = 'wcfm_is_comercio'";
+        $join_clauses[] = "LEFT JOIN {$wpdb->usermeta} um_comercial ON u.ID = um_comercial.user_id AND um_comercial.meta_key = 'wcfm_is_comercial'";
+        
+        $classification_conditions = array();
+        
+        if ($filter_comercio) {
+            // Mostrar comercios: NULL (por defecto) o '1' (explícito)
+            $classification_conditions[] = "(um_comercio.meta_value IS NULL OR um_comercio.meta_value = '1')";
+        }
+        
+        if ($filter_comercial) {
+            // Mostrar comerciales: NULL (por defecto) o '1' (explícito)
+            $classification_conditions[] = "(um_comercial.meta_value IS NULL OR um_comercial.meta_value = '1')";
+        }
+        
+        if (!empty($classification_conditions)) {
+            // Unir con OR: mostrar si cumple AL MENOS una condición
+            $where_conditions[] = '(' . implode(' OR ', $classification_conditions) . ')';
+        }
+        
+        if (!$filter_comercio && !$filter_comercial) {
+            // Ninguno seleccionado = no mostrar nada
+            $where_conditions[] = "1 = 0";
         }
         
         // Construir query
