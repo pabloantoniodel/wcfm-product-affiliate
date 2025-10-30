@@ -54,9 +54,16 @@ class WCFM_Affiliate_Link_Tracking {
         // Check if we have a vendor reference in URL
         $ref_vendor_id = 0;
         
+        // Try store_origin parameter (numeric ID) - PRIORIDAD
+        if (isset($_GET['store_origin'])) {
+            $ref_vendor_id = intval($_GET['store_origin']);
+            error_log('🔍 Link Tracking: store_origin detectado = ' . $ref_vendor_id);
+        }
+        
         // Try ref_vendor parameter (numeric ID)
-        if (isset($_GET[self::URL_PARAM])) {
+        if (!$ref_vendor_id && isset($_GET[self::URL_PARAM])) {
             $ref_vendor_id = intval($_GET[self::URL_PARAM]);
+            error_log('🔍 Link Tracking: ref_vendor detectado = ' . $ref_vendor_id);
         }
         
         // Try ref parameter (username/slug)
@@ -68,12 +75,15 @@ class WCFM_Affiliate_Link_Tracking {
             }
             if ($user) {
                 $ref_vendor_id = $user->ID;
+                error_log('🔍 Link Tracking: ref (username) detectado = ' . $ref_vendor_id);
             }
         }
         
         if (!$ref_vendor_id) {
             return;
         }
+        
+        error_log('✅ Link Tracking: Vendor final = ' . $ref_vendor_id);
         
         // Check if we're on a product page
         if (!is_product()) {
