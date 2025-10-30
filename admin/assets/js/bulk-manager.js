@@ -71,10 +71,12 @@ jQuery(document).ready(function($) {
         $tbody.empty();
         
         if (products.length === 0) {
-            $tbody.append('<tr><td colspan="4" style="text-align:center;">No se encontraron productos</td></tr>');
+            $tbody.append('<tr><td colspan="5" style="text-align:center;">No se encontraron productos</td></tr>');
         } else {
             products.forEach(function(product) {
                 var $row = $('<tr>');
+                $row.append('<td><input type="checkbox" class="search-product-checkbox" value="' + product.id + '" /></td>');
+                $row.append('<td>' + product.image + '</td>');
                 $row.append('<td>' + product.name + '</td>');
                 $row.append('<td>' + product.vendor + '</td>');
                 $row.append('<td>' + product.price + '</td>');
@@ -87,31 +89,88 @@ jQuery(document).ready(function($) {
     }
     
     // ==========================================
+    // SELECCIONAR TODOS EN BÚSQUEDA
+    // ==========================================
+    
+    $('#select-all-search').on('change', function() {
+        $('.search-product-checkbox').prop('checked', $(this).is(':checked'));
+    });
+    
+    // ==========================================
+    // AÑADIR SELECCIONADOS DE BÚSQUEDA
+    // ==========================================
+    
+    $('#add-selected-search-btn').on('click', function() {
+        var productIds = [];
+        $('.search-product-checkbox:checked').each(function() {
+            productIds.push($(this).val());
+        });
+        
+        if (productIds.length === 0) {
+            alert('Por favor selecciona al menos un producto');
+            return;
+        }
+        
+        addMultipleToPool(productIds);
+    });
+    
+    // ==========================================
     // AÑADIR A POOL
     // ==========================================
     
     $(document).on('click', '.add-to-pool', function() {
         var productId = $(this).data('product-id');
-        addToPool(productId);
+        addToPool([productId]);
     });
     
-    function addToPool(productId) {
-        $.ajax({
-            url: wcfmAffiliateBulk.ajaxurl,
-            type: 'POST',
-            data: {
-                action: 'wcfm_affiliate_add_to_pool',
-                nonce: wcfmAffiliateBulk.nonce,
-                product_id: productId
-            },
-            success: function(response) {
-                if (response.success) {
-                    location.reload();
-                } else {
-                    alert(response.data.message || wcfmAffiliateBulk.i18n.error);
+    function addToPool(productIds) {
+        addMultipleToPool(productIds);
+    }
+    
+    function addMultipleToPool(productIds) {
+        var successCount = 0;
+        var totalProducts = productIds.length;
+        var errors = [];
+        
+        function addNext(index) {
+            if (index >= productIds.length) {
+                // Terminado - mostrar resultado y recargar
+                var message = successCount + ' de ' + totalProducts + ' productos añadidos';
+                if (errors.length > 0) {
+                    message += '\n\nErrores:\n' + errors.join('\n');
                 }
+                alert(message);
+                location.reload();
+                return;
             }
-        });
+            
+            var productId = productIds[index];
+            
+            $.ajax({
+                url: wcfmAffiliateBulk.ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'wcfm_affiliate_add_to_pool',
+                    nonce: wcfmAffiliateBulk.nonce,
+                    product_id: productId
+                },
+                success: function(response) {
+                    if (response.success) {
+                        successCount++;
+                    } else {
+                        errors.push('Producto ' + productId + ': ' + response.data.message);
+                    }
+                },
+                error: function() {
+                    errors.push('Producto ' + productId + ': Error de conexión');
+                },
+                complete: function() {
+                    addNext(index + 1);
+                }
+            });
+        }
+        
+        addNext(0);
     }
     
     // ==========================================

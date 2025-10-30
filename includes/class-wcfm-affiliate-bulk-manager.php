@@ -127,6 +127,8 @@ class WCFM_Affiliate_Bulk_Manager {
                         <table class="wp-list-table widefat fixed striped">
                             <thead>
                                 <tr>
+                                    <th class="check-column"><input type="checkbox" id="select-all-search" /></th>
+                                    <th><?php _e('Imagen', 'wcfm-product-affiliate'); ?></th>
                                     <th><?php _e('Producto', 'wcfm-product-affiliate'); ?></th>
                                     <th><?php _e('Vendedor', 'wcfm-product-affiliate'); ?></th>
                                     <th><?php _e('Precio', 'wcfm-product-affiliate'); ?></th>
@@ -135,6 +137,11 @@ class WCFM_Affiliate_Bulk_Manager {
                             </thead>
                             <tbody id="search-results-body"></tbody>
                         </table>
+                        <div style="margin-top:15px;">
+                            <button type="button" id="add-selected-search-btn" class="button button-primary">
+                                <?php _e('Añadir Seleccionados al Pool', 'wcfm-product-affiliate'); ?>
+                            </button>
+                        </div>
                     </div>
                 </div>
                 
