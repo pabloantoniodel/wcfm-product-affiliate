@@ -365,6 +365,8 @@ class WCFM_Affiliate_Bulk_Manager {
                 'posts_per_page' => $per_page,
                 'paged' => $page,
                 's' => $search,
+                'orderby' => 'date',
+                'order' => 'DESC',
                 'meta_query' => array(
                     'relation' => 'OR',
                     array(
