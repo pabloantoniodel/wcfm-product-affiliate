@@ -317,8 +317,11 @@ class WCFM_Affiliate_Bulk_Manager {
         error_log('WCFM Affiliate: ajax_search_products called');
         error_log('POST data: ' . print_r($_POST, true));
         
-        // Verificar nonce
-        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'wcfm_affiliate_bulk_nonce')) {
+        // Verificar nonce (false = no morir, solo retornar false)
+        $nonce_check = check_ajax_referer('wcfm_affiliate_bulk_nonce', 'nonce', false);
+        error_log('WCFM Affiliate: Nonce check result: ' . ($nonce_check ? 'true' : 'false'));
+        
+        if (!$nonce_check) {
             error_log('WCFM Affiliate: Nonce verification failed');
             wp_send_json_error(array('message' => __('Nonce inválido', 'wcfm-product-affiliate')));
             return;
@@ -326,9 +329,12 @@ class WCFM_Affiliate_Bulk_Manager {
         
         // Verificar permisos
         if (!current_user_can('manage_woocommerce')) {
+            error_log('WCFM Affiliate: Permission check failed');
             wp_send_json_error(array('message' => __('Sin permisos', 'wcfm-product-affiliate')));
             return;
         }
+        
+        error_log('WCFM Affiliate: All checks passed, proceeding with search');
         
         try {
             $search = isset($_POST['search']) ? sanitize_text_field($_POST['search']) : '';
