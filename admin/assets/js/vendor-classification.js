@@ -86,16 +86,20 @@
             $status.removeClass('show success error');
             
             // Enviar AJAX
+            const ajaxData = {
+                action: 'wcfm_update_vendor_classification',
+                nonce: wcfmVendorClassification.nonce,
+                vendor_id: vendorId,
+                is_comercio: isComercio ? 'true' : 'false',
+                is_comercial: isComercial ? 'true' : 'false'
+            };
+            
+            console.log('📤 Enviando AJAX:', ajaxData);
+            
             $.ajax({
                 url: wcfmVendorClassification.ajax_url,
                 type: 'POST',
-                data: {
-                    action: 'wcfm_update_vendor_classification',
-                    nonce: wcfmVendorClassification.nonce,
-                    vendor_id: vendorId,
-                    is_comercio: isComercio,
-                    is_comercial: isComercial
-                },
+                data: ajaxData,
                 success: function(response) {
                     console.log('✅ Respuesta del servidor:', response);
                     
