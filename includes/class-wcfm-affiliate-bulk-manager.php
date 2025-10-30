@@ -123,7 +123,7 @@ class WCFM_Affiliate_Bulk_Manager {
                     </div>
                     
                     <div id="search-results" style="display:none;">
-                        <h3><?php _e('Resultados de búsqueda', 'wcfm-product-affiliate'); ?></h3>
+                        <h3><?php _e('Resultados de búsqueda', 'wcfm-product-affiliate'); ?> <span id="search-results-count"></span></h3>
                         <table class="wp-list-table widefat fixed striped">
                             <thead>
                                 <tr>
@@ -137,6 +137,9 @@ class WCFM_Affiliate_Bulk_Manager {
                             </thead>
                             <tbody id="search-results-body"></tbody>
                         </table>
+                        
+                        <div class="search-pagination" style="margin-top:15px; text-align:center;"></div>
+                        
                         <div style="margin-top:15px;">
                             <button type="button" id="add-selected-search-btn" class="button button-primary">
                                 <?php _e('Añadir Seleccionados al Pool', 'wcfm-product-affiliate'); ?>
@@ -353,11 +356,14 @@ class WCFM_Affiliate_Bulk_Manager {
         
         try {
             $search = isset($_POST['search']) ? sanitize_text_field($_POST['search']) : '';
+            $page = isset($_POST['page']) ? intval($_POST['page']) : 1;
+            $per_page = 20;
             
             $args = array(
                 'post_type' => 'product',
                 'post_status' => 'publish',
-                'posts_per_page' => 20,
+                'posts_per_page' => $per_page,
+                'paged' => $page,
                 's' => $search,
                 'meta_query' => array(
                     'relation' => 'OR',
@@ -373,28 +379,37 @@ class WCFM_Affiliate_Bulk_Manager {
                 ),
             );
             
-            $products = get_posts($args);
+            $query = new WP_Query($args);
             $results = array();
             
-            foreach ($products as $post) {
-                $product = wc_get_product($post->ID);
-                if (!$product) {
-                    continue;
+            if ($query->have_posts()) {
+                while ($query->have_posts()) {
+                    $query->the_post();
+                    $product = wc_get_product(get_the_ID());
+                    if (!$product) {
+                        continue;
+                    }
+                    
+                    $vendor_id = get_post_field('post_author', get_the_ID());
+                    $vendor = get_userdata($vendor_id);
+                    
+                    $results[] = array(
+                        'id' => get_the_ID(),
+                        'name' => $product->get_name(),
+                        'vendor' => $vendor ? $vendor->display_name : 'Desconocido',
+                        'price' => $product->get_price_html(),
+                        'image' => $product->get_image('thumbnail'),
+                    );
                 }
-                
-                $vendor_id = get_post_field('post_author', $post->ID);
-                $vendor = get_userdata($vendor_id);
-                
-                $results[] = array(
-                    'id' => $post->ID,
-                    'name' => $product->get_name(),
-                    'vendor' => $vendor ? $vendor->display_name : 'Desconocido',
-                    'price' => $product->get_price_html(),
-                    'image' => $product->get_image('thumbnail'),
-                );
+                wp_reset_postdata();
             }
             
-            wp_send_json_success(array('products' => $results));
+            wp_send_json_success(array(
+                'products' => $results,
+                'total' => $query->found_posts,
+                'pages' => $query->max_num_pages,
+                'current_page' => $page,
+            ));
             
         } catch (Exception $e) {
             wp_send_json_error(array('message' => 'Error: ' . $e->getMessage()));

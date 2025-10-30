@@ -25,20 +25,22 @@ jQuery(document).ready(function($) {
     // BÚSQUEDA DE PRODUCTOS
     // ==========================================
     
+    var currentSearchTerm = '';
+    
     $('#search-products-btn').on('click', function() {
-        var search = $('#product-search').val();
-        searchProducts(search);
+        currentSearchTerm = $('#product-search').val();
+        searchProducts(currentSearchTerm, 1);
     });
     
     $('#product-search').on('keypress', function(e) {
         if (e.which === 13) {
-            var search = $(this).val();
-            searchProducts(search);
+            currentSearchTerm = $(this).val();
+            searchProducts(currentSearchTerm, 1);
         }
     });
     
-    function searchProducts(search) {
-        console.log('🔍 Buscando productos:', search);
+    function searchProducts(search, page) {
+        console.log('🔍 Buscando productos:', search, 'Página:', page);
         console.log('AJAX URL:', wcfmAffiliateBulk.ajaxurl);
         
         $.ajax({
@@ -47,7 +49,8 @@ jQuery(document).ready(function($) {
             data: {
                 action: 'wcfm_affiliate_search_products',
                 nonce: wcfmAffiliateBulk.nonce,
-                search: search
+                search: search,
+                page: page
             },
             beforeSend: function() {
                 console.log('📤 Enviando búsqueda...');
@@ -57,7 +60,7 @@ jQuery(document).ready(function($) {
                 console.log('📥 Respuesta recibida:', response);
                 if (response.success) {
                     console.log('✅ Productos encontrados:', response.data.products.length);
-                    displaySearchResults(response.data.products);
+                    displaySearchResults(response.data);
                 } else {
                     console.error('❌ Error:', response.data.message);
                     alert(response.data.message || 'Error al buscar productos');
@@ -76,12 +79,16 @@ jQuery(document).ready(function($) {
         });
     }
     
-    function displaySearchResults(products) {
+    function displaySearchResults(data) {
+        var products = data.products;
         var $tbody = $('#search-results-body');
         $tbody.empty();
         
+        // Actualizar contador
+        $('#search-results-count').text('(' + data.total + ' encontrados)');
+        
         if (products.length === 0) {
-            $tbody.append('<tr><td colspan="5" style="text-align:center;">No se encontraron productos</td></tr>');
+            $tbody.append('<tr><td colspan="6" style="text-align:center;">No se encontraron productos</td></tr>');
         } else {
             products.forEach(function(product) {
                 var $row = $('<tr>');
@@ -95,8 +102,33 @@ jQuery(document).ready(function($) {
             });
         }
         
+        // Mostrar paginación
+        displaySearchPagination(data);
+        
         $('#search-results').show();
     }
+    
+    function displaySearchPagination(data) {
+        var $pagination = $('.search-pagination');
+        $pagination.empty();
+        
+        if (data.pages > 1) {
+            if (data.current_page > 1) {
+                $pagination.append('<button type="button" class="button search-page" data-page="' + (data.current_page - 1) + '">« Anterior</button> ');
+            }
+            
+            $pagination.append('<span style="margin: 0 10px;">Página ' + data.current_page + ' de ' + data.pages + '</span>');
+            
+            if (data.current_page < data.pages) {
+                $pagination.append(' <button type="button" class="button search-page" data-page="' + (data.current_page + 1) + '">Siguiente »</button>');
+            }
+        }
+    }
+    
+    $(document).on('click', '.search-page', function() {
+        var page = $(this).data('page');
+        searchProducts(currentSearchTerm, page);
+    });
     
     // ==========================================
     // SELECCIONAR TODOS EN BÚSQUEDA
