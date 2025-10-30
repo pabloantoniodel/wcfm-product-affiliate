@@ -554,7 +554,7 @@ class WCFM_Affiliate_Bulk_Manager {
         }
         
         global $wpdb;
-        $table_name = $wpdb->prefix . 'wcfm_affiliate_products';
+        $table_name = $wpdb->prefix . WCFM_Affiliate_DB::TABLE_AFFILIATES;
         
         $success_count = 0;
         $errors = array();
@@ -579,18 +579,22 @@ class WCFM_Affiliate_Bulk_Manager {
                 continue;
             }
             
+            // Obtener el propietario original del producto
+            $product_owner_id = get_post_field('post_author', $product_id);
+            
             // Crear afiliación
-            error_log('Intentando insertar afiliación: product_id=' . $product_id . ', vendor_id=' . $vendor_id);
+            error_log('Intentando insertar afiliación: product_id=' . $product_id . ', vendor_id=' . $vendor_id . ', owner_id=' . $product_owner_id);
             
             $result = $wpdb->insert(
                 $table_name,
                 array(
-                    'product_id' => $product_id,
                     'vendor_id' => $vendor_id,
+                    'product_id' => $product_id,
+                    'product_owner_id' => $product_owner_id,
                     'status' => 'active',
                     'created_at' => current_time('mysql'),
                 ),
-                array('%d', '%d', '%s', '%s')
+                array('%d', '%d', '%d', '%s', '%s')
             );
             
             if ($result) {
@@ -604,12 +608,8 @@ class WCFM_Affiliate_Bulk_Manager {
             }
         }
         
-        // Remover productos afiliados del pool
-        if ($success_count > 0) {
-            $pool = $this->get_pool();
-            $pool = array_diff($pool, $product_ids);
-            $this->update_pool($pool);
-        }
+        // NO remover del pool - el admin puede querer afiliar a otros vendedores
+        // El pool es independiente de las afiliaciones individuales
         
         $message = sprintf(
             __('%d productos afiliados correctamente', 'wcfm-product-affiliate'),
