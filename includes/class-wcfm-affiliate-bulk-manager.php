@@ -313,51 +313,71 @@ class WCFM_Affiliate_Bulk_Manager {
      * AJAX: Search products
      */
     public function ajax_search_products() {
-        check_ajax_referer('wcfm_affiliate_bulk_nonce', 'nonce');
+        // Log para debug
+        error_log('WCFM Affiliate: ajax_search_products called');
+        error_log('POST data: ' . print_r($_POST, true));
         
+        // Verificar nonce
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'wcfm_affiliate_bulk_nonce')) {
+            error_log('WCFM Affiliate: Nonce verification failed');
+            wp_send_json_error(array('message' => __('Nonce inválido', 'wcfm-product-affiliate')));
+            return;
+        }
+        
+        // Verificar permisos
         if (!current_user_can('manage_woocommerce')) {
             wp_send_json_error(array('message' => __('Sin permisos', 'wcfm-product-affiliate')));
+            return;
         }
         
-        $search = isset($_POST['search']) ? sanitize_text_field($_POST['search']) : '';
-        
-        $args = array(
-            'post_type' => 'product',
-            'post_status' => 'publish',
-            'posts_per_page' => 20,
-            's' => $search,
-            'meta_query' => array(
-                'relation' => 'OR',
-                array(
-                    'key' => '_wcfm_affiliate_original_product',
-                    'compare' => 'NOT EXISTS',
-                ),
-                array(
-                    'key' => '_wcfm_affiliate_original_product',
-                    'value' => '',
-                    'compare' => '=',
-                ),
-            ),
-        );
-        
-        $products = get_posts($args);
-        $results = array();
-        
-        foreach ($products as $post) {
-            $product = wc_get_product($post->ID);
-            $vendor_id = get_post_field('post_author', $post->ID);
-            $vendor = get_userdata($vendor_id);
+        try {
+            $search = isset($_POST['search']) ? sanitize_text_field($_POST['search']) : '';
             
-            $results[] = array(
-                'id' => $post->ID,
-                'name' => $product->get_name(),
-                'vendor' => $vendor->display_name,
-                'price' => $product->get_price_html(),
-                'image' => $product->get_image('thumbnail'),
+            $args = array(
+                'post_type' => 'product',
+                'post_status' => 'publish',
+                'posts_per_page' => 20,
+                's' => $search,
+                'meta_query' => array(
+                    'relation' => 'OR',
+                    array(
+                        'key' => '_wcfm_affiliate_original_product',
+                        'compare' => 'NOT EXISTS',
+                    ),
+                    array(
+                        'key' => '_wcfm_affiliate_original_product',
+                        'value' => '',
+                        'compare' => '=',
+                    ),
+                ),
             );
+            
+            $products = get_posts($args);
+            $results = array();
+            
+            foreach ($products as $post) {
+                $product = wc_get_product($post->ID);
+                if (!$product) {
+                    continue;
+                }
+                
+                $vendor_id = get_post_field('post_author', $post->ID);
+                $vendor = get_userdata($vendor_id);
+                
+                $results[] = array(
+                    'id' => $post->ID,
+                    'name' => $product->get_name(),
+                    'vendor' => $vendor ? $vendor->display_name : 'Desconocido',
+                    'price' => $product->get_price_html(),
+                    'image' => $product->get_image('thumbnail'),
+                );
+            }
+            
+            wp_send_json_success(array('products' => $results));
+            
+        } catch (Exception $e) {
+            wp_send_json_error(array('message' => 'Error: ' . $e->getMessage()));
         }
-        
-        wp_send_json_success(array('products' => $results));
     }
     
     /**
