@@ -12,12 +12,16 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+error_log('📦 WCFM Classification: Archivo cargado');
+
 class WCFM_Affiliate_Vendor_Classification {
     
     /**
      * Constructor
      */
     public function __construct() {
+        error_log('🏗️ WCFM Classification: Constructor llamado');
+        
         // Añadir menú de administración (después del Bulk Manager que tiene prioridad 10)
         add_action('admin_menu', array($this, 'add_admin_menu'), 25);
         
