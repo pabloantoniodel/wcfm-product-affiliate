@@ -40,10 +40,22 @@ class WCFM_Affiliate_Bulk_Manager {
      * Add admin menu
      */
     public function add_admin_menu() {
+        // Menú principal
+        add_menu_page(
+            __('Productos Afiliados', 'wcfm-product-affiliate'),
+            __('Productos Afiliados', 'wcfm-product-affiliate'),
+            'manage_woocommerce',
+            'wcfm-affiliate-bulk',
+            array($this, 'render_page'),
+            'dashicons-networking',
+            56
+        );
+        
+        // Submenú "Gestión Masiva"
         add_submenu_page(
-            'wc-admin&path=/analytics/overview',
-            __('Productos para Afiliar', 'wcfm-product-affiliate'),
-            __('Productos Afiliar', 'wcfm-product-affiliate'),
+            'wcfm-affiliate-bulk',
+            __('Gestión Masiva', 'wcfm-product-affiliate'),
+            __('Gestión Masiva', 'wcfm-product-affiliate'),
             'manage_woocommerce',
             'wcfm-affiliate-bulk',
             array($this, 'render_page')
@@ -54,7 +66,7 @@ class WCFM_Affiliate_Bulk_Manager {
      * Enqueue scripts
      */
     public function enqueue_scripts($hook) {
-        if ('woocommerce_page_wcfm-affiliate-bulk' !== $hook) {
+        if ('toplevel_page_wcfm-affiliate-bulk' !== $hook) {
             return;
         }
         
