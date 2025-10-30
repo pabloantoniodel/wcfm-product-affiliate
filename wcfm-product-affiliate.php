@@ -139,7 +139,9 @@ class WCFM_Product_Affiliate {
         
         // Admin y AJAX
         if (is_admin() || defined('DOING_AJAX')) {
+            error_log('WCFM Affiliate: Loading Bulk Manager class...');
             require_once WCFM_AFFILIATE_PLUGIN_DIR . 'includes/class-wcfm-affiliate-bulk-manager.php';
+            error_log('WCFM Affiliate: Bulk Manager class loaded');
         }
         
         // Solo Admin (no AJAX)
@@ -178,7 +180,9 @@ class WCFM_Product_Affiliate {
         }
         
         if (is_admin() || defined('DOING_AJAX')) {
+            error_log('WCFM Affiliate: Instantiating Bulk Manager...');
             $this->bulk_manager = new WCFM_Affiliate_Bulk_Manager();
+            error_log('WCFM Affiliate: Bulk Manager instantiated');
         }
         
         if (is_admin() && !defined('DOING_AJAX')) {

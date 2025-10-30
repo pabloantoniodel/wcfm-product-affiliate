@@ -15,12 +15,16 @@ class WCFM_Affiliate_Bulk_Manager {
      * Constructor
      */
     public function __construct() {
+        error_log('WCFM_Affiliate_Bulk_Manager: Constructor called');
+        
         // Registrar hooks AJAX inmediatamente
-        add_action('wp_ajax_wcfm_affiliate_search_products', array($this, 'ajax_search_products'));
-        add_action('wp_ajax_wcfm_affiliate_add_to_pool', array($this, 'ajax_add_to_pool'));
-        add_action('wp_ajax_wcfm_affiliate_remove_from_pool', array($this, 'ajax_remove_from_pool'));
-        add_action('wp_ajax_wcfm_affiliate_search_vendors', array($this, 'ajax_search_vendors'));
-        add_action('wp_ajax_wcfm_affiliate_bulk_affiliate', array($this, 'ajax_bulk_affiliate'));
+        add_action('wp_ajax_wcfm_affiliate_search_products', array($this, 'ajax_search_products'), 1);
+        add_action('wp_ajax_wcfm_affiliate_add_to_pool', array($this, 'ajax_add_to_pool'), 1);
+        add_action('wp_ajax_wcfm_affiliate_remove_from_pool', array($this, 'ajax_remove_from_pool'), 1);
+        add_action('wp_ajax_wcfm_affiliate_search_vendors', array($this, 'ajax_search_vendors'), 1);
+        add_action('wp_ajax_wcfm_affiliate_bulk_affiliate', array($this, 'ajax_bulk_affiliate'), 1);
+        
+        error_log('WCFM_Affiliate_Bulk_Manager: AJAX hooks registered');
         
         // Otros hooks
         $this->init_hooks();
