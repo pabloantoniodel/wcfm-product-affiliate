@@ -327,7 +327,16 @@ $total_pages = $products->max_num_pages;
                                     <?php if ($owner): ?>
                                         <div style="display: flex; align-items: center; gap: 8px;">
                                             <?php echo get_avatar($owner->ID, 32, '', '', array('style' => 'border-radius: 50%;')); ?>
-                                            <span><?php echo esc_html($owner->display_name); ?></span>
+                                            <div style="line-height: 1.4;">
+                                                <?php 
+                                                $store_name = get_user_meta($owner->ID, 'store_name', true);
+                                                if ($store_name): ?>
+                                                    <div style="font-weight: 500; color: #333;"><?php echo esc_html($store_name); ?></div>
+                                                    <div style="font-size: 12px; color: #666;"><?php echo esc_html($owner->display_name); ?></div>
+                                                <?php else: ?>
+                                                    <span><?php echo esc_html($owner->display_name); ?></span>
+                                                <?php endif; ?>
+                                            </div>
                                         </div>
                                     <?php else: ?>
                                         -
@@ -478,7 +487,16 @@ $total_pages = $products->max_num_pages;
                                         <?php if ($owner): ?>
                                             <div style="display: flex; align-items: center; gap: 8px;">
                                                 <?php echo get_avatar($owner->ID, 32, '', '', array('style' => 'border-radius: 50%;')); ?>
-                                                <span><?php echo esc_html($owner->display_name); ?></span>
+                                                <div style="line-height: 1.4;">
+                                                    <?php 
+                                                    $store_name = get_user_meta($owner->ID, 'store_name', true);
+                                                    if ($store_name): ?>
+                                                        <div style="font-weight: 500; color: #333;"><?php echo esc_html($store_name); ?></div>
+                                                        <div style="font-size: 12px; color: #666;"><?php echo esc_html($owner->display_name); ?></div>
+                                                    <?php else: ?>
+                                                        <span><?php echo esc_html($owner->display_name); ?></span>
+                                                    <?php endif; ?>
+                                                </div>
                                             </div>
                                         <?php else: ?>
                                             -
