@@ -1,6 +1,15 @@
 jQuery(document).ready(function($) {
     'use strict';
     
+    // Restaurar posición del scroll después de búsqueda
+    var savedScrollPosition = sessionStorage.getItem('affiliate_scroll_position');
+    if (savedScrollPosition !== null) {
+        setTimeout(function() {
+            window.scrollTo(0, parseInt(savedScrollPosition));
+            sessionStorage.removeItem('affiliate_scroll_position');
+        }, 100);
+    }
+    
     // Añadir producto afiliado
     $(document).on('click', '.wcfm_affiliate_add_button', function(e) {
         e.preventDefault();
@@ -170,12 +179,16 @@ jQuery(document).ready(function($) {
     // Manejar búsqueda
     $(document).on('click', '#affiliate_search_btn', function(e) {
         e.preventDefault();
+        // Guardar posición del scroll
+        sessionStorage.setItem('affiliate_scroll_position', window.pageYOffset);
         window.location.href = buildSearchUrl(1);
     });
     
     // Limpiar búsqueda
-    $(document).on('click', '#affiliate_clear_btn', function(e) {
+    $(document).on('click', '#affiliate_clear_search', function(e) {
         e.preventDefault();
+        // Guardar posición del scroll
+        sessionStorage.setItem('affiliate_scroll_position', window.pageYOffset);
         var baseUrl = window.location.href.split('?')[0];
         window.location.href = baseUrl;
     });
@@ -183,6 +196,8 @@ jQuery(document).ready(function($) {
     // Paginación
     $(document).on('click', '.affiliate-pagination', function(e) {
         e.preventDefault();
+        // Guardar posición del scroll
+        sessionStorage.setItem('affiliate_scroll_position', window.pageYOffset);
         var page = $(this).data('page');
         window.location.href = buildSearchUrl(page);
     });
@@ -192,6 +207,39 @@ jQuery(document).ready(function($) {
         if (e.which === 13) {
             e.preventDefault();
             $('#affiliate_search_btn').click();
+        }
+    });
+    
+    // Búsqueda automática al escribir (3+ caracteres)
+    var searchTimeout = null;
+    $(document).on('keyup', '#affiliate_search', function() {
+        var searchTerm = $(this).val().trim();
+        var $status = $('#products-search-status');
+        
+        // Limpiar timeout anterior
+        if (searchTimeout) {
+            clearTimeout(searchTimeout);
+        }
+        
+        // Si hay menos de 3 caracteres, limpiar status
+        if (searchTerm.length > 0 && searchTerm.length < 3) {
+            $status.html('⏳ Escribe al menos 3 caracteres para buscar...').css('color', '#999');
+            return;
+        }
+        
+        // Si está vacío, ocultar status
+        if (searchTerm.length === 0) {
+            $status.html('');
+            return;
+        }
+        
+        // Si hay 3+ caracteres, esperar 500ms y buscar
+        if (searchTerm.length >= 3) {
+            $status.html('⏳ Buscando...').css('color', '#2271b1');
+            
+            searchTimeout = setTimeout(function() {
+                $('#affiliate_search_btn').click();
+            }, 500);
         }
     });
 });

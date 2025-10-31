@@ -92,9 +92,38 @@ $args = array(
     'post__not_in' => $affiliate_product_ids,
 );
 
-// Aplicar búsqueda
+// Aplicar búsqueda mejorada (nombre, descripción, SKU, ID)
 if (!empty($search_term)) {
-    $args['s'] = $search_term;
+    // Si es un número, buscar por ID primero
+    if (is_numeric($search_term)) {
+        $args['post__in'] = array(intval($search_term));
+        // Si no encuentra por ID, buscar por texto
+        $test_query = new WP_Query($args);
+        if (!$test_query->have_posts()) {
+            unset($args['post__in']);
+            $args['s'] = $search_term;
+            // Añadir búsqueda en SKU
+            $args['meta_query'] = array(
+                'relation' => 'OR',
+                array(
+                    'key' => '_sku',
+                    'value' => $search_term,
+                    'compare' => 'LIKE',
+                ),
+            );
+        }
+    } else {
+        // Búsqueda por texto en título, contenido y SKU
+        $args['s'] = $search_term;
+        $args['meta_query'] = array(
+            'relation' => 'OR',
+            array(
+                'key' => '_sku',
+                'value' => $search_term,
+                'compare' => 'LIKE',
+            ),
+        );
+    }
 }
 
 // Aplicar filtro de categoría
@@ -326,12 +355,24 @@ $total_pages = $products->max_num_pages;
                         <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">
                             🔍 Buscar en: Nombre, Descripción, SKU
                         </label>
-                        <input type="text" 
-                               name="affiliate_search" 
-                               id="affiliate_search" 
-                               value="" 
-                               placeholder="Escribe al menos 3 caracteres para buscar..." 
-                               style="width: 100%; padding: 12px 45px 12px 15px; border: 2px solid #dee2e6; border-radius: 8px; font-size: 16px; box-sizing: border-box; transition: border-color 0.3s;">
+                        <div style="display: flex; gap: 10px;">
+                            <input type="text" 
+                                   name="affiliate_search" 
+                                   id="affiliate_search" 
+                                   value="<?php echo esc_attr($search_term); ?>" 
+                                   placeholder="Escribe para buscar..." 
+                                   style="flex: 1; padding: 12px 15px; border: 2px solid #dee2e6; border-radius: 8px; font-size: 16px; box-sizing: border-box; transition: border-color 0.3s;">
+                            <button type="button" id="affiliate_search_btn" class="button button-primary" style="padding: 12px 24px; height: auto; font-size: 16px;">
+                                <span class="dashicons dashicons-search" style="margin-right: 5px; vertical-align: middle;"></span>
+                                Buscar
+                            </button>
+                            <?php if (!empty($search_term)): ?>
+                            <button type="button" id="affiliate_clear_search" class="button" style="padding: 12px 24px; height: auto; font-size: 16px;">
+                                <span class="dashicons dashicons-no" style="margin-right: 5px; vertical-align: middle;"></span>
+                                Limpiar
+                            </button>
+                            <?php endif; ?>
+                        </div>
                         <span id="products-search-loading" style="display: none; position: absolute; right: 15px; top: 43px; color: #2271b1;">
                             <span class="dashicons dashicons-update" style="animation: spin 1s linear infinite;"></span>
                         </span>
