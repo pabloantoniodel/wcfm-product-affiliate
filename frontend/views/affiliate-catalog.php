@@ -355,24 +355,18 @@ $total_pages = $products->max_num_pages;
                         <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">
                             🔍 Buscar en: Nombre, Descripción, SKU
                         </label>
-                        <div style="display: flex; gap: 10px;">
-                            <input type="text" 
-                                   name="affiliate_search" 
-                                   id="affiliate_search" 
-                                   value="<?php echo esc_attr($search_term); ?>" 
-                                   placeholder="Escribe para buscar..." 
-                                   style="flex: 1; padding: 12px 15px; border: 2px solid #dee2e6; border-radius: 8px; font-size: 16px; box-sizing: border-box; transition: border-color 0.3s;">
-                            <button type="button" id="affiliate_search_btn" class="button button-primary" style="padding: 12px 24px; height: auto; font-size: 16px;">
-                                <span class="dashicons dashicons-search" style="margin-right: 5px; vertical-align: middle;"></span>
-                                Buscar
-                            </button>
-                            <?php if (!empty($search_term)): ?>
-                            <button type="button" id="affiliate_clear_search" class="button" style="padding: 12px 24px; height: auto; font-size: 16px;">
-                                <span class="dashicons dashicons-no" style="margin-right: 5px; vertical-align: middle;"></span>
-                                Limpiar
-                            </button>
-                            <?php endif; ?>
-                        </div>
+                        <input type="text" 
+                               name="affiliate_search" 
+                               id="affiliate_search" 
+                               value="<?php echo esc_attr($search_term); ?>" 
+                               placeholder="Escribe al menos 3 caracteres para buscar..." 
+                               style="width: 100%; padding: 12px 15px; border: 2px solid #dee2e6; border-radius: 8px; font-size: 16px; box-sizing: border-box; transition: border-color 0.3s;">
+                        <?php if (!empty($search_term)): ?>
+                        <button type="button" id="affiliate_clear_search" class="button" style="margin-top: 10px; padding: 10px 20px; font-size: 14px;">
+                            <span class="dashicons dashicons-no" style="margin-right: 5px; vertical-align: middle;"></span>
+                            Limpiar búsqueda
+                        </button>
+                        <?php endif; ?>
                         <span id="products-search-loading" style="display: none; position: absolute; right: 15px; top: 43px; color: #2271b1;">
                             <span class="dashicons dashicons-update" style="animation: spin 1s linear infinite;"></span>
                         </span>

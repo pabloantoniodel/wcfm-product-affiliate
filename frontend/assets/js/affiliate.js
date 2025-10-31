@@ -1,15 +1,6 @@
 jQuery(document).ready(function($) {
     'use strict';
     
-    // Restaurar posición del scroll después de búsqueda
-    var savedScrollPosition = sessionStorage.getItem('affiliate_scroll_position');
-    if (savedScrollPosition !== null) {
-        setTimeout(function() {
-            window.scrollTo(0, parseInt(savedScrollPosition));
-            sessionStorage.removeItem('affiliate_scroll_position');
-        }, 100);
-    }
-    
     // Añadir producto afiliado
     $(document).on('click', '.wcfm_affiliate_add_button', function(e) {
         e.preventDefault();
@@ -176,41 +167,20 @@ jQuery(document).ready(function($) {
         return baseUrl + (params.length > 0 ? '?' + params.join('&') : '');
     }
     
-    // Manejar búsqueda
-    $(document).on('click', '#affiliate_search_btn', function(e) {
-        e.preventDefault();
-        // Guardar posición del scroll
-        sessionStorage.setItem('affiliate_scroll_position', window.pageYOffset);
-        window.location.href = buildSearchUrl(1);
-    });
-    
     // Limpiar búsqueda
     $(document).on('click', '#affiliate_clear_search', function(e) {
         e.preventDefault();
-        // Guardar posición del scroll
-        sessionStorage.setItem('affiliate_scroll_position', window.pageYOffset);
-        var baseUrl = window.location.href.split('?')[0];
-        window.location.href = baseUrl;
+        window.location.href = window.location.href.split('?')[0];
     });
     
     // Paginación
     $(document).on('click', '.affiliate-pagination', function(e) {
         e.preventDefault();
-        // Guardar posición del scroll
-        sessionStorage.setItem('affiliate_scroll_position', window.pageYOffset);
         var page = $(this).data('page');
         window.location.href = buildSearchUrl(page);
     });
     
-    // Permitir búsqueda con Enter
-    $(document).on('keypress', '#affiliate_search', function(e) {
-        if (e.which === 13) {
-            e.preventDefault();
-            $('#affiliate_search_btn').click();
-        }
-    });
-    
-    // Búsqueda automática al escribir (3+ caracteres)
+    // Búsqueda automática al escribir (3+ caracteres) - recarga la página
     var searchTimeout = null;
     $(document).on('keyup', '#affiliate_search', function() {
         var searchTerm = $(this).val().trim();
@@ -221,25 +191,44 @@ jQuery(document).ready(function($) {
             clearTimeout(searchTimeout);
         }
         
-        // Si hay menos de 3 caracteres, limpiar status
+        // Si hay menos de 3 caracteres, mostrar mensaje
         if (searchTerm.length > 0 && searchTerm.length < 3) {
             $status.html('⏳ Escribe al menos 3 caracteres para buscar...').css('color', '#999');
             return;
         }
         
-        // Si está vacío, ocultar status
+        // Si está vacío, recargar página sin filtros (mostrar todo)
         if (searchTerm.length === 0) {
             $status.html('');
+            searchTimeout = setTimeout(function() {
+                sessionStorage.setItem('affiliate_scroll_to_results', '1');
+                window.location.href = window.location.href.split('?')[0];
+            }, 500);
             return;
         }
         
-        // Si hay 3+ caracteres, esperar 500ms y buscar
+        // Si hay 3+ caracteres, esperar 500ms y recargar con búsqueda
         if (searchTerm.length >= 3) {
             $status.html('⏳ Buscando...').css('color', '#2271b1');
             
             searchTimeout = setTimeout(function() {
-                $('#affiliate_search_btn').click();
+                // Después de recargar, hacer scroll a la sección de productos
+                sessionStorage.setItem('affiliate_scroll_to_results', '1');
+                window.location.href = buildSearchUrl(1);
             }, 500);
         }
     });
+    
+    // Restaurar scroll después de recarga
+    if (sessionStorage.getItem('affiliate_scroll_to_results')) {
+        sessionStorage.removeItem('affiliate_scroll_to_results');
+        setTimeout(function() {
+            var resultsSection = $('.wcfm-container').eq(1); // Segunda sección (productos disponibles)
+            if (resultsSection.length) {
+                $('html, body').animate({
+                    scrollTop: resultsSection.offset().top - 100
+                }, 300);
+            }
+        }, 200);
+    }
 });
