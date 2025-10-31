@@ -223,12 +223,12 @@ jQuery(document).ready(function($) {
     if (sessionStorage.getItem('affiliate_scroll_to_results')) {
         sessionStorage.removeItem('affiliate_scroll_to_results');
         setTimeout(function() {
-            var resultsSection = $('.wcfm-container').eq(1); // Segunda sección (productos disponibles)
+            var resultsSection = $('#productos-disponibles-section');
             if (resultsSection.length) {
                 $('html, body').animate({
-                    scrollTop: resultsSection.offset().top - 100
-                }, 300);
+                    scrollTop: resultsSection.offset().top - 50
+                }, 400);
             }
-        }, 200);
+        }, 300);
     }
 });

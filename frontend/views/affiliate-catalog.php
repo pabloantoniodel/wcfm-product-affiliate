@@ -94,27 +94,31 @@ $args = array(
 
 // Aplicar búsqueda mejorada (nombre, descripción, SKU, ID)
 if (!empty($search_term)) {
-    // Si es un número, buscar por ID primero
+    // Si es un número, intentar buscar por ID
     if (is_numeric($search_term)) {
-        $args['post__in'] = array(intval($search_term));
-        // Si no encuentra por ID, buscar por texto
-        $test_query = new WP_Query($args);
-        if (!$test_query->have_posts()) {
-            unset($args['post__in']);
+        $product_id = intval($search_term);
+        
+        // Verificar si el producto existe y no está afiliado
+        $product_exists = get_post($product_id);
+        if ($product_exists && $product_exists->post_type === 'product' && $product_exists->post_status === 'publish') {
+            // Verificar que no sea del vendedor actual y no esté afiliado
+            if ($product_exists->post_author != $vendor_id && !in_array($product_id, $affiliate_product_ids)) {
+                $args['post__in'] = array($product_id);
+            } else {
+                // Si es suyo o ya está afiliado, buscar por texto
+                $args['s'] = $search_term;
+            }
+        } else {
+            // No existe como ID, buscar por texto (SKU, etc.)
             $args['s'] = $search_term;
-            // Añadir búsqueda en SKU
-            $args['meta_query'] = array(
-                'relation' => 'OR',
-                array(
-                    'key' => '_sku',
-                    'value' => $search_term,
-                    'compare' => 'LIKE',
-                ),
-            );
         }
     } else {
-        // Búsqueda por texto en título, contenido y SKU
+        // Búsqueda por texto
         $args['s'] = $search_term;
+    }
+    
+    // Siempre añadir búsqueda en SKU para búsquedas de texto
+    if (!isset($args['post__in'])) {
         $args['meta_query'] = array(
             'relation' => 'OR',
             array(
@@ -199,7 +203,7 @@ $total_pages = $products->max_num_pages;
                 
                 <div style="margin-top: 15px; display: flex; gap: 10px; align-items: center;">
                     <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; background: rgba(255,255,255,0.2); padding: 8px 15px; border-radius: 20px;">
-                        <input type="checkbox" id="dont-show-again-checkbox" style="width: 16px; height: 16px; cursor: pointer;">
+                        <input type="checkbox" id="dont-show-again-checkbox" style="width: 18px !important; height: 18px !important; cursor: pointer !important; opacity: 1 !important; position: relative !important; margin: 0 !important; appearance: checkbox !important; -webkit-appearance: checkbox !important; -moz-appearance: checkbox !important;">
                         <span>No volver a mostrar estas instrucciones</span>
                     </label>
                 </div>
@@ -377,7 +381,7 @@ $total_pages = $products->max_num_pages;
         </div>
         
         <!-- Productos Disponibles -->
-        <div class="wcfm-container" style="max-width: 100% !important; width: 100% !important;">
+        <div id="productos-disponibles-section" class="wcfm-container" style="max-width: 100% !important; width: 100% !important;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                 <h2 style="margin: 0; text-align: left;">Productos Disponibles <?php if (!empty($search_term)) echo '- Resultados para: "' . esc_html($search_term) . '"'; ?></h2>
                 <button id="wcfm_bulk_add_affiliates" class="wcfm_submit_button" style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: 500;">
