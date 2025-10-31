@@ -94,39 +94,47 @@ $args = array(
 
 // Aplicar búsqueda mejorada (nombre, descripción, SKU, ID)
 if (!empty($search_term)) {
-    // Si es un número, intentar buscar por ID
+    global $wpdb;
+    
+    // Si es un número, intentar buscar por ID primero
     if (is_numeric($search_term)) {
         $product_id = intval($search_term);
         
-        // Verificar si el producto existe y no está afiliado
+        // Verificar si el producto existe
         $product_exists = get_post($product_id);
         if ($product_exists && $product_exists->post_type === 'product' && $product_exists->post_status === 'publish') {
             // Verificar que no sea del vendedor actual y no esté afiliado
             if ($product_exists->post_author != $vendor_id && !in_array($product_id, $affiliate_product_ids)) {
                 $args['post__in'] = array($product_id);
-            } else {
-                // Si es suyo o ya está afiliado, buscar por texto
-                $args['s'] = $search_term;
             }
-        } else {
-            // No existe como ID, buscar por texto (SKU, etc.)
-            $args['s'] = $search_term;
         }
-    } else {
-        // Búsqueda por texto
-        $args['s'] = $search_term;
     }
     
-    // Siempre añadir búsqueda en SKU para búsquedas de texto
+    // Si no se encontró por ID, buscar por texto en título, contenido y SKU
     if (!isset($args['post__in'])) {
-        $args['meta_query'] = array(
-            'relation' => 'OR',
-            array(
-                'key' => '_sku',
-                'value' => $search_term,
-                'compare' => 'LIKE',
-            ),
-        );
+        // Buscar IDs de productos que coincidan
+        $search_like = '%' . $wpdb->esc_like($search_term) . '%';
+        
+        $matching_ids = $wpdb->get_col($wpdb->prepare("
+            SELECT DISTINCT p.ID 
+            FROM {$wpdb->posts} p
+            LEFT JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id AND pm.meta_key = '_sku'
+            WHERE p.post_type = 'product' 
+            AND p.post_status = 'publish'
+            AND (
+                p.post_title LIKE %s
+                OR p.post_content LIKE %s
+                OR p.post_excerpt LIKE %s
+                OR pm.meta_value LIKE %s
+            )
+        ", $search_like, $search_like, $search_like, $search_like));
+        
+        if (!empty($matching_ids)) {
+            $args['post__in'] = $matching_ids;
+        } else {
+            // Si no encuentra nada, poner un ID imposible para que no devuelva resultados
+            $args['post__in'] = array(0);
+        }
     }
 }
 
