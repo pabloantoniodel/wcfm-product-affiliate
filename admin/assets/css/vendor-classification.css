@@ -1,5 +1,5 @@
 /**
- * Estilos para Clasificación de Vendedores
+ * Estilos para Clasificación de Clientes
  * @package WCFM_Product_Affiliate
  * @since 1.3.0
  */
@@ -58,6 +58,15 @@
     font-size: 16px;
 }
 
+#customer-search {
+    width: 100%;
+    padding: 12px 45px 12px 45px;
+    border: 1px solid #8c8f94;
+    border-radius: 4px;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
 #vendor-search {
     width: 100%;
     padding: 12px 45px 12px 45px;
@@ -67,6 +76,7 @@
     transition: all 0.3s ease;
 }
 
+#customer-search:focus,
 #vendor-search:focus {
     outline: none;
     border-color: #2271b1;
@@ -120,8 +130,10 @@
 .wcfm-classification-list thead th {
     background: #f6f7f7;
     font-weight: 600;
-    padding: 12px;
+    padding: 10px 8px;
     border-bottom: 2px solid #c3c4c7;
+    font-size: 13px;
+    white-space: nowrap;
 }
 
 .wcfm-classification-list thead th i {
@@ -130,55 +142,73 @@
 }
 
 .wcfm-classification-list tbody td {
-    padding: 12px;
+    padding: 10px 8px;
     vertical-align: middle;
-}
-
-/* Columnas */
-.vendor-column {
-    width: 30%;
-}
-
-.email-column {
-    width: 25%;
-}
-
-.comercio-column,
-.comercial-column {
-    width: 15%;
-    text-align: center;
-}
-
-.actions-column {
-    width: 15%;
-    text-align: center;
-}
-
-/* Información del vendedor */
-.vendor-info {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.vendor-name {
-    font-weight: 600;
-    color: #2c3338;
-    font-size: 14px;
-}
-
-.vendor-login {
-    font-size: 12px;
-    color: #646970;
-}
-
-.vendor-email {
-    color: #2271b1;
-    text-decoration: none;
     font-size: 13px;
 }
 
-.vendor-email:hover {
+/* Columnas */
+.customer-column {
+    min-width: 150px;
+    max-width: 200px;
+}
+
+.email-column {
+    min-width: 180px;
+    max-width: 220px;
+}
+
+.phone-column {
+    min-width: 120px;
+    max-width: 150px;
+}
+
+.revisado-column,
+.contrato-column,
+.interesa-column,
+.en_espera-column,
+.no_interesa-column,
+.comercio-column,
+.comercial-column {
+    width: 80px;
+    text-align: center;
+    padding: 8px !important;
+}
+
+.actions-column {
+    width: 120px;
+    text-align: center;
+    padding: 8px !important;
+}
+
+/* Información del cliente */
+.customer-info {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.customer-name {
+    font-weight: 600;
+    color: #2c3338;
+    font-size: 13px;
+    line-height: 1.3;
+}
+
+.customer-login {
+    font-size: 11px;
+    color: #646970;
+    line-height: 1.2;
+}
+
+.customer-email {
+    color: #2271b1;
+    text-decoration: none;
+    font-size: 12px;
+    word-break: break-word;
+}
+
+.customer-email:hover {
     text-decoration: underline;
 }
 
@@ -190,8 +220,8 @@
 }
 
 .classification-checkbox input[type="checkbox"] {
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
     cursor: pointer;
     margin: 0;
 }
@@ -206,14 +236,14 @@
     color: white;
     border: none;
     border-radius: 4px;
-    padding: 8px 16px;
-    font-size: 13px;
+    padding: 6px 12px;
+    font-size: 12px;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.3s ease;
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
 }
 
 .save-classification-btn:hover {

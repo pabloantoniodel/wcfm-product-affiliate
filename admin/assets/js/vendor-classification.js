@@ -1,5 +1,5 @@
 /**
- * JavaScript para Clasificación de Vendedores
+ * JavaScript para Clasificación de Clientes
  * @package WCFM_Product_Affiliate
  * @since 1.3.0
  */
@@ -9,19 +9,20 @@
     
     let currentPage = 1;
     let searchTimeout = null;
-    let totalVendors = 0;
+    let totalCustomers = 0;
     
     $(document).ready(function() {
-        console.log('✅ WCFM Vendor Classification: JavaScript cargado');
+        console.log('✅ WCFM Customer Classification: JavaScript cargado');
         
-        // Cargar vendedores inicialmente
-        loadVendors();
+        // Cargar clientes inicialmente
+        loadCustomers();
         
         /**
-         * Búsqueda en tiempo real
+         * Búsqueda en tiempo real - Solo buscar con 3+ caracteres o si está vacío
          */
-        $('#vendor-search').on('input', function() {
+        $('#customer-search').on('input', function() {
             const searchTerm = $(this).val().trim();
+            const $resultsCount = $('#search-results-count');
             
             // Mostrar/ocultar botón limpiar
             if (searchTerm.length > 0) {
@@ -30,35 +31,68 @@
                 $('#clear-search').hide();
             }
             
-            // Debounce de 500ms
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(function() {
-                currentPage = 1;
-                loadVendors(searchTerm);
-            }, 500);
+            // Solo buscar si tiene 3+ caracteres o si está vacío (para mostrar todos)
+            if (searchTerm.length === 0) {
+                // Si está vacío, buscar todos
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(function() {
+                    currentPage = 1;
+                    loadCustomers();
+                }, 300);
+            } else if (searchTerm.length >= 3) {
+                // Si tiene 3+ caracteres, buscar con debounce
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(function() {
+                    currentPage = 1;
+                    loadCustomers();
+                }, 500);
+            } else {
+                // Si tiene menos de 3 caracteres, mostrar mensaje
+                $resultsCount.html(`<span style="color: #8c8f94;">Escribe al menos 3 caracteres para buscar...</span>`);
+            }
         });
         
         /**
          * Limpiar búsqueda
          */
         $('#clear-search').on('click', function() {
-            $('#vendor-search').val('');
+            $('#customer-search').val('');
             $(this).hide();
             currentPage = 1;
-            loadVendors();
+            loadCustomers();
         });
         
         /**
-         * Cambio en checkboxes
+         * Cambio en filtros de checkboxes - Buscar inmediatamente
          */
-        $(document).on('change', '.comercio-checkbox, .comercial-checkbox', function() {
+        $(document).on('change', '.filter-checkbox', function() {
+            currentPage = 1;
+            // Buscar inmediatamente sin debounce
+            clearTimeout(searchTimeout);
+            loadCustomers();
+        });
+        
+        /**
+         * Cambio en selector de orden - Buscar inmediatamente
+         */
+        $('#order-by').on('change', function() {
+            currentPage = 1;
+            // Buscar inmediatamente sin debounce
+            clearTimeout(searchTimeout);
+            loadCustomers();
+        });
+        
+        /**
+         * Cambio en checkboxes de clasificación
+         */
+        $(document).on('change', '.classification-checkbox input[type="checkbox"]', function() {
             const $row = $(this).closest('tr');
             const $saveBtn = $row.find('.save-classification-btn');
             
             // Habilitar botón de guardar
             $saveBtn.prop('disabled', false);
             
-            console.log('📝 Checkbox cambiado - Vendor:', $row.data('vendor-id'));
+            console.log('📝 Checkbox cambiado - Customer:', $row.data('customer-id'));
         });
         
         /**
@@ -67,15 +101,18 @@
         $(document).on('click', '.save-classification-btn', function() {
             const $btn = $(this);
             const $row = $btn.closest('tr');
-            const vendorId = $row.data('vendor-id');
-            const $comercioCheckbox = $row.find('.comercio-checkbox');
-            const $comercialCheckbox = $row.find('.comercial-checkbox');
+            const customerId = $row.data('customer-id');
             const $status = $row.find('.save-status');
             
-            const isComercio = $comercioCheckbox.is(':checked');
-            const isComercial = $comercialCheckbox.is(':checked');
+            const revisado = $row.find('.revisado-checkbox').is(':checked');
+            const contrato = $row.find('.contrato-checkbox').is(':checked');
+            const interesa = $row.find('.interesa-checkbox').is(':checked');
+            const enEspera = $row.find('.en_espera-checkbox').is(':checked');
+            const noInteresa = $row.find('.no_interesa-checkbox').is(':checked');
+            const comercio = $row.find('.comercio-checkbox').is(':checked');
+            const comercial = $row.find('.comercial-checkbox').is(':checked');
             
-            console.log('💾 Guardando clasificación - Vendor:', vendorId, '- Comercio:', isComercio, '- Comercial:', isComercial);
+            console.log('💾 Guardando clasificación - Customer:', customerId);
             
             // Deshabilitar botón y cambiar texto
             $btn.prop('disabled', true);
@@ -87,11 +124,16 @@
             
             // Enviar AJAX
             const ajaxData = {
-                action: 'wcfm_update_vendor_classification',
+                action: 'wcfm_update_customer_classification',
                 nonce: wcfmVendorClassification.nonce,
-                vendor_id: vendorId,
-                is_comercio: isComercio ? 'true' : 'false',
-                is_comercial: isComercial ? 'true' : 'false'
+                customer_id: customerId,
+                revisado: revisado ? 'true' : 'false',
+                contrato: contrato ? 'true' : 'false',
+                interesa: interesa ? 'true' : 'false',
+                en_espera: enEspera ? 'true' : 'false',
+                no_interesa: noInteresa ? 'true' : 'false',
+                comercio: comercio ? 'true' : 'false',
+                comercial: comercial ? 'true' : 'false'
             };
             
             console.log('📤 Enviando AJAX:', ajaxData);
@@ -148,29 +190,37 @@
             const page = $(this).data('page');
             if (page) {
                 currentPage = page;
-                const searchTerm = $('#vendor-search').val().trim();
-                loadVendors(searchTerm);
+                loadCustomers();
             }
         });
         
     });
     
     /**
-     * Cargar vendedores
+     * Cargar clientes
      */
-    function loadVendors(search = '') {
-        console.log('🔄 Cargando vendedores - Búsqueda:', search || '(sin filtro)', '- Página:', currentPage);
+    function loadCustomers() {
+        const searchTerm = $('#customer-search').val().trim();
+        const filterRevisado = $('.filter-checkbox[value="revisado"]').is(':checked');
+        const filterContrato = $('.filter-checkbox[value="contrato"]').is(':checked');
+        const filterInteresa = $('.filter-checkbox[value="interesa"]').is(':checked');
+        const filterEnEspera = $('.filter-checkbox[value="en_espera"]').is(':checked');
+        const filterNoInteresa = $('.filter-checkbox[value="no_interesa"]').is(':checked');
+        const filterComercial = $('.filter-checkbox[value="comercial"]').is(':checked');
+        const orderBy = $('#order-by').val() || 'registered_desc';
         
-        const $vendorsList = $('#vendors-list');
+        console.log('🔄 Cargando clientes - Búsqueda:', searchTerm || '(sin filtro)', '- Página:', currentPage, '- Orden:', orderBy);
+        
+        const $customersList = $('#customers-list');
         const $pagination = $('#classification-pagination');
         const $resultsCount = $('#search-results-count');
         
         // Mostrar loading
-        $vendorsList.html(`
+        $customersList.html(`
             <tr>
-                <td colspan="5" class="loading-row">
+                <td colspan="11" class="loading-row">
                     <i class="fas fa-spinner fa-spin"></i>
-                    Cargando vendedores...
+                    Cargando clientes...
                 </td>
             </tr>
         `);
@@ -180,35 +230,42 @@
             url: wcfmVendorClassification.ajax_url,
             type: 'POST',
             data: {
-                action: 'wcfm_search_vendors_classification',
+                action: 'wcfm_search_customers_classification',
                 nonce: wcfmVendorClassification.nonce,
-                search: search,
-                page: currentPage
+                search: searchTerm,
+                page: currentPage,
+                order_by: orderBy,
+                filter_revisado: filterRevisado ? 'true' : 'false',
+                filter_contrato: filterContrato ? 'true' : 'false',
+                filter_interesa: filterInteresa ? 'true' : 'false',
+                filter_en_espera: filterEnEspera ? 'true' : 'false',
+                filter_no_interesa: filterNoInteresa ? 'true' : 'false',
+                filter_comercial: filterComercial ? 'true' : 'false'
             },
             success: function(response) {
-                console.log('✅ Vendedores cargados:', response);
+                console.log('✅ Clientes cargados:', response);
                 
                 if (response.success) {
                     const data = response.data;
-                    totalVendors = data.total;
+                    totalCustomers = data.total;
                     
                     // Actualizar contador
-                    if (search) {
-                        $resultsCount.html(`Se encontraron <strong>${data.total}</strong> vendedor(es) con "<strong>${search}</strong>"`);
+                    if (searchTerm) {
+                        $resultsCount.html(`Se encontraron <strong>${data.total}</strong> cliente(s) con "<strong>${searchTerm}</strong>"`);
                     } else {
-                        $resultsCount.html(`Total: <strong>${data.total}</strong> vendedores`);
+                        $resultsCount.html(`Total: <strong>${data.total}</strong> clientes`);
                     }
                     
-                    // Renderizar vendedores
-                    if (data.vendors.length > 0) {
-                        displayVendors(data.vendors);
+                    // Renderizar clientes
+                    if (data.customers.length > 0) {
+                        displayCustomers(data.customers);
                         displayPagination(data.pages, data.current_page, data.total, data.per_page);
                     } else {
-                        $vendorsList.html(`
+                        $customersList.html(`
                             <tr class="no-results-row">
-                                <td colspan="5">
+                                <td colspan="11">
                                     <i class="fas fa-search"></i>
-                                    <div>No se encontraron vendedores con los criterios de búsqueda.</div>
+                                    <div>No se encontraron clientes con los criterios de búsqueda.</div>
                                 </td>
                             </tr>
                         `);
@@ -216,11 +273,11 @@
                     }
                 } else {
                     console.error('❌ Error en respuesta:', response);
-                    $vendorsList.html(`
+                    $customersList.html(`
                         <tr class="no-results-row">
-                            <td colspan="5">
+                            <td colspan="11">
                                 <i class="fas fa-exclamation-triangle"></i>
-                                <div>Error al cargar vendedores. Por favor, inténtalo de nuevo.</div>
+                                <div>Error al cargar clientes. Por favor, inténtalo de nuevo.</div>
                             </td>
                         </tr>
                     `);
@@ -228,9 +285,9 @@
             },
             error: function(xhr, status, error) {
                 console.error('❌ Error en AJAX:', {xhr, status, error});
-                $vendorsList.html(`
+                $customersList.html(`
                     <tr class="no-results-row">
-                        <td colspan="5">
+                        <td colspan="11">
                             <i class="fas fa-times-circle"></i>
                             <div>Error de conexión. Por favor, recarga la página.</div>
                         </td>
@@ -241,32 +298,80 @@
     }
     
     /**
-     * Mostrar vendedores en la tabla
+     * Mostrar clientes en la tabla
      */
-    function displayVendors(vendors) {
-        const $vendorsList = $('#vendors-list');
+    function displayCustomers(customers) {
+        const $customersList = $('#customers-list');
         let html = '';
         
-        vendors.forEach(function(vendor) {
+        customers.forEach(function(customer) {
             html += `
-                <tr data-vendor-id="${vendor.id}">
-                    <td class="vendor-column">
-                        <div class="vendor-info">
-                            <span class="vendor-name">${escapeHtml(vendor.full_name)}</span>
-                            <span class="vendor-login">@${escapeHtml(vendor.user_login)}</span>
+                <tr data-customer-id="${customer.id}">
+                    <td class="customer-column">
+                        <div class="customer-info">
+                            <span class="customer-name">${escapeHtml(customer.full_name)}</span>
+                            <span class="customer-login">@${escapeHtml(customer.user_login)}</span>
                         </div>
                     </td>
                     <td class="email-column">
-                        <a href="mailto:${escapeHtml(vendor.email)}" class="vendor-email">
-                            ${escapeHtml(vendor.email)}
+                        <a href="mailto:${escapeHtml(customer.email)}" class="customer-email" title="${escapeHtml(customer.email)}">
+                            ${escapeHtml(customer.email.length > 25 ? customer.email.substring(0, 25) + '...' : customer.email)}
                         </a>
+                    </td>
+                    <td class="phone-column">
+                        ${escapeHtml(customer.phone || '-')}
+                    </td>
+                    <td class="revisado-column">
+                        <div class="classification-checkbox">
+                            <input 
+                                type="checkbox" 
+                                class="revisado-checkbox" 
+                                ${customer.revisado ? 'checked' : ''}
+                            >
+                        </div>
+                    </td>
+                    <td class="contrato-column">
+                        <div class="classification-checkbox">
+                            <input 
+                                type="checkbox" 
+                                class="contrato-checkbox" 
+                                ${customer.contrato ? 'checked' : ''}
+                            >
+                        </div>
+                    </td>
+                    <td class="interesa-column">
+                        <div class="classification-checkbox">
+                            <input 
+                                type="checkbox" 
+                                class="interesa-checkbox" 
+                                ${customer.interesa ? 'checked' : ''}
+                            >
+                        </div>
+                    </td>
+                    <td class="en_espera-column">
+                        <div class="classification-checkbox">
+                            <input 
+                                type="checkbox" 
+                                class="en_espera-checkbox" 
+                                ${customer.en_espera ? 'checked' : ''}
+                            >
+                        </div>
+                    </td>
+                    <td class="no_interesa-column">
+                        <div class="classification-checkbox">
+                            <input 
+                                type="checkbox" 
+                                class="no_interesa-checkbox" 
+                                ${customer.no_interesa ? 'checked' : ''}
+                            >
+                        </div>
                     </td>
                     <td class="comercio-column">
                         <div class="classification-checkbox">
                             <input 
                                 type="checkbox" 
                                 class="comercio-checkbox" 
-                                ${vendor.is_comercio ? 'checked' : ''}
+                                ${customer.comercio ? 'checked' : ''}
                             >
                         </div>
                     </td>
@@ -275,7 +380,7 @@
                             <input 
                                 type="checkbox" 
                                 class="comercial-checkbox" 
-                                ${vendor.is_comercial ? 'checked' : ''}
+                                ${customer.comercial ? 'checked' : ''}
                             >
                         </div>
                     </td>
@@ -290,7 +395,7 @@
             `;
         });
         
-        $vendorsList.html(html);
+        $customersList.html(html);
     }
     
     /**
@@ -307,7 +412,7 @@
         let html = '<div class="pagination-info">';
         const start = ((currentPage - 1) * perPage) + 1;
         const end = Math.min(currentPage * perPage, total);
-        html += `Mostrando ${start} - ${end} de ${total} vendedores`;
+        html += `Mostrando ${start} - ${end} de ${total} clientes`;
         html += '</div>';
         
         html += '<div class="pagination-buttons">';
