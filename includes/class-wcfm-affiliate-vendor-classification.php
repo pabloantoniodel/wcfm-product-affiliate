@@ -31,6 +31,8 @@ class WCFM_Affiliate_Vendor_Classification {
         // AJAX handlers
         add_action('wp_ajax_wcfm_search_customers_classification', array($this, 'ajax_search_customers'));
         add_action('wp_ajax_wcfm_update_customer_classification', array($this, 'ajax_update_classification'));
+        add_action('wp_ajax_wcfm_update_customer_code', array($this, 'ajax_update_customer_code'));
+        add_action('wp_ajax_wcfm_update_customer_cv_classification', array($this, 'ajax_update_customer_cv_classification'));
     }
     
     /**
@@ -103,6 +105,14 @@ class WCFM_Affiliate_Vendor_Classification {
             
             <div class="wcfm-classification-container">
                 
+                <!-- Overlay de carga -->
+                <div id="classification-loading-overlay" class="classification-loading-overlay" style="display: none;">
+                    <div class="classification-loading-content">
+                        <div class="classification-spinner"></div>
+                        <p class="classification-loading-text">Cargando filtros...</p>
+                    </div>
+                </div>
+                
                 <!-- Buscador -->
                 <div class="wcfm-classification-search">
                     <div class="search-box">
@@ -110,7 +120,7 @@ class WCFM_Affiliate_Vendor_Classification {
                         <input 
                             type="text" 
                             id="customer-search" 
-                            placeholder="Buscar por nombre, email o teléfono..."
+                            placeholder="Buscar por nombre, email, teléfono o código CV..."
                             autocomplete="off"
                         >
                         <button type="button" id="clear-search" class="clear-btn" style="display: none;">
@@ -125,7 +135,7 @@ class WCFM_Affiliate_Vendor_Classification {
                                 <strong style="display: block; margin-bottom: 10px;">
                                     <i class="fas fa-filter"></i> Filtrar por clasificación:
                                 </strong>
-                                <div style="display: flex; flex-wrap: wrap; gap: 15px;">
+                                <div style="display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 15px;">
                                     <label style="display: flex; align-items: center; cursor: pointer;">
                                         <input type="checkbox" class="filter-checkbox" value="revisado" style="margin-right: 5px;">
                                         Revisado
@@ -149,6 +159,23 @@ class WCFM_Affiliate_Vendor_Classification {
                                     <label style="display: flex; align-items: center; cursor: pointer;">
                                         <input type="checkbox" class="filter-checkbox" value="comercial" style="margin-right: 5px;">
                                         Comercial
+                                    </label>
+                                    <label style="display: flex; align-items: center; cursor: pointer;">
+                                        <input type="checkbox" class="filter-checkbox" value="comercio" style="margin-right: 5px;">
+                                        Vendedor
+                                    </label>
+                                </div>
+                                <div>
+                                    <strong style="display: block; margin-bottom: 8px; font-size: 12px;">
+                                        <i class="fas fa-link"></i> Lógica de filtros:
+                                    </strong>
+                                    <label style="display: flex; align-items: center; cursor: pointer; margin-right: 15px;">
+                                        <input type="radio" name="filter-logic" value="AND" checked style="margin-right: 5px;">
+                                        Cumplir TODAS las condiciones (AND)
+                                    </label>
+                                    <label style="display: flex; align-items: center; cursor: pointer;">
+                                        <input type="radio" name="filter-logic" value="OR" style="margin-right: 5px;">
+                                        Cumplir AL MENOS UNA condición (OR)
                                     </label>
                                 </div>
                             </div>
@@ -190,6 +217,14 @@ class WCFM_Affiliate_Vendor_Classification {
                                     <i class="fas fa-phone"></i>
                                     Teléfono
                                 </th>
+                                <th class="code-column">
+                                    <i class="fas fa-key"></i>
+                                    Código CV
+                                </th>
+                                <th class="cv-classification-column">
+                                    <i class="fas fa-tag"></i>
+                                    Clasificación CV
+                                </th>
                                 <th class="revisado-column">
                                     <i class="fas fa-check-circle"></i>
                                     Revisado
@@ -212,7 +247,7 @@ class WCFM_Affiliate_Vendor_Classification {
                                 </th>
                                 <th class="comercio-column">
                                     <i class="fas fa-shopping-bag"></i>
-                                    Comercio
+                                    Vendedor
                                 </th>
                                 <th class="comercial-column">
                                     <i class="fas fa-handshake"></i>
@@ -226,7 +261,7 @@ class WCFM_Affiliate_Vendor_Classification {
                         </thead>
                         <tbody id="customers-list">
                             <tr>
-                                <td colspan="11" class="loading-row">
+                                <td colspan="12" class="loading-row">
                                     <i class="fas fa-spinner fa-spin"></i>
                                     Cargando clientes...
                                 </td>
@@ -255,6 +290,7 @@ class WCFM_Affiliate_Vendor_Classification {
         $page = isset($_POST['page']) ? intval($_POST['page']) : 1;
         $per_page = 20;
         $order_by = isset($_POST['order_by']) ? sanitize_text_field($_POST['order_by']) : 'registered_desc';
+        $filter_logic = isset($_POST['filter_logic']) ? sanitize_text_field($_POST['filter_logic']) : 'AND';
         
         // Filtros por checkboxes
         $filter_revisado = isset($_POST['filter_revisado']) && $_POST['filter_revisado'] === 'true';
@@ -263,6 +299,7 @@ class WCFM_Affiliate_Vendor_Classification {
         $filter_en_espera = isset($_POST['filter_en_espera']) && $_POST['filter_en_espera'] === 'true';
         $filter_no_interesa = isset($_POST['filter_no_interesa']) && $_POST['filter_no_interesa'] === 'true';
         $filter_comercial = isset($_POST['filter_comercial']) && $_POST['filter_comercial'] === 'true';
+        $filter_comercio = isset($_POST['filter_comercio']) && $_POST['filter_comercio'] === 'true';
         
         error_log('🔍 WCFM Classification: Buscando clientes - Search: "' . $search . '" - Página: ' . $page . ' - Orden: ' . $order_by);
         
@@ -291,8 +328,9 @@ class WCFM_Affiliate_Vendor_Classification {
                 LOWER(u.display_name) LIKE %s OR
                 LOWER(COALESCE(um_first.meta_value, '')) LIKE %s OR
                 LOWER(COALESCE(um_last.meta_value, '')) LIKE %s OR
-                LOWER(COALESCE(um_phone.meta_value, '')) LIKE %s
-            )", $search_like_lower, $search_like_lower, $search_like_lower, $search_like_lower, $search_like_lower, $search_like_lower);
+                LOWER(COALESCE(um_phone.meta_value, '')) LIKE %s OR
+                LOWER(COALESCE(um_code.meta_value, '')) LIKE %s
+            )", $search_like_lower, $search_like_lower, $search_like_lower, $search_like_lower, $search_like_lower, $search_like_lower, $search_like_lower);
             
             // Construir WHERE para filtros de checkboxes
             $filter_where = '';
@@ -316,9 +354,15 @@ class WCFM_Affiliate_Vendor_Classification {
                 // Comercial: incluir los que tienen '1' o NULL (por defecto es true si no existe)
                 $filter_conditions[] = "(um_comercial.meta_value = '1' OR um_comercial.meta_value IS NULL OR um_comercial.meta_value = '')";
             }
+            if ($filter_comercio) {
+                // Comercio: incluir los que tienen '1' o NULL (por defecto es true si no existe)
+                $filter_conditions[] = "(um_comercio.meta_value = '1' OR um_comercio.meta_value IS NULL OR um_comercio.meta_value = '')";
+            }
             
             if (!empty($filter_conditions)) {
-                $filter_where = ' AND (' . implode(' OR ', $filter_conditions) . ')';
+                // Usar AND u OR según la selección del usuario
+                $filter_operator = ($filter_logic === 'OR') ? ' OR ' : ' AND ';
+                $filter_where = ' AND (' . implode($filter_operator, $filter_conditions) . ')';
             }
             
             // Construir ORDER BY según el criterio seleccionado
@@ -337,6 +381,8 @@ class WCFM_Affiliate_Vendor_Classification {
                     AND um_last.meta_key = 'last_name'
                 LEFT JOIN {$wpdb->usermeta} um_phone ON u.ID = um_phone.user_id 
                     AND um_phone.meta_key = 'billing_phone'
+                LEFT JOIN {$wpdb->usermeta} um_code ON u.ID = um_code.user_id 
+                    AND um_code.meta_key = 'codigo-ciudad-virtual'
                 LEFT JOIN {$wpdb->usermeta} um_revisado ON u.ID = um_revisado.user_id 
                     AND um_revisado.meta_key = 'customer_revisado'
                 LEFT JOIN {$wpdb->usermeta} um_contrato ON u.ID = um_contrato.user_id 
@@ -349,6 +395,8 @@ class WCFM_Affiliate_Vendor_Classification {
                     AND um_no_interesa.meta_key = 'customer_no_interesa'
                 LEFT JOIN {$wpdb->usermeta} um_comercial ON u.ID = um_comercial.user_id 
                     AND um_comercial.meta_key = 'wcfm_is_comercial'
+                LEFT JOIN {$wpdb->usermeta} um_comercio ON u.ID = um_comercio.user_id 
+                    AND um_comercio.meta_key = 'wcfm_is_comercio'
                 WHERE {$search_where}
                 {$filter_where}
                 {$order_clause}
@@ -367,6 +415,8 @@ class WCFM_Affiliate_Vendor_Classification {
                     AND um_last.meta_key = 'last_name'
                 LEFT JOIN {$wpdb->usermeta} um_phone ON u.ID = um_phone.user_id 
                     AND um_phone.meta_key = 'billing_phone'
+                LEFT JOIN {$wpdb->usermeta} um_code ON u.ID = um_code.user_id 
+                    AND um_code.meta_key = 'codigo-ciudad-virtual'
                 LEFT JOIN {$wpdb->usermeta} um_revisado ON u.ID = um_revisado.user_id 
                     AND um_revisado.meta_key = 'customer_revisado'
                 LEFT JOIN {$wpdb->usermeta} um_contrato ON u.ID = um_contrato.user_id 
@@ -379,6 +429,8 @@ class WCFM_Affiliate_Vendor_Classification {
                     AND um_no_interesa.meta_key = 'customer_no_interesa'
                 LEFT JOIN {$wpdb->usermeta} um_comercial ON u.ID = um_comercial.user_id 
                     AND um_comercial.meta_key = 'wcfm_is_comercial'
+                LEFT JOIN {$wpdb->usermeta} um_comercio ON u.ID = um_comercio.user_id 
+                    AND um_comercio.meta_key = 'wcfm_is_comercio'
                 WHERE {$search_where}
                 {$filter_where}
             ";
@@ -505,14 +557,36 @@ class WCFM_Affiliate_Vendor_Classification {
                     )
                 );
             }
+            if ($filter_comercio) {
+                // Para comercio, incluir también los que no tienen el meta (NULL) ya que por defecto es true
+                // Usar una relación OR para incluir '1' o NULL/vacío
+                $meta_queries[] = array(
+                    'relation' => 'OR',
+                    array(
+                        'key' => 'wcfm_is_comercio',
+                        'value' => '1',
+                        'compare' => '='
+                    ),
+                    array(
+                        'key' => 'wcfm_is_comercio',
+                        'compare' => 'NOT EXISTS'
+                    ),
+                    array(
+                        'key' => 'wcfm_is_comercio',
+                        'value' => '',
+                        'compare' => '='
+                    )
+                );
+            }
             
-            // Si hay filtros, usar OR
+            // Si hay filtros, usar AND u OR según la selección
             if (!empty($meta_queries)) {
                 if (count($meta_queries) > 1) {
-                    $meta_queries['relation'] = 'OR';
+                    $meta_queries['relation'] = ($filter_logic === 'OR') ? 'OR' : 'AND';
                 }
                 $args['meta_query'] = $meta_queries;
             }
+            
             
             // Ejecutar query
             $user_query = new WP_User_Query($args);
@@ -549,6 +623,25 @@ class WCFM_Affiliate_Vendor_Classification {
                 $full_name = $customer->display_name;
             }
             
+            $code = get_user_meta($customer->ID, 'codigo-ciudad-virtual', true);
+            if ('' === $code) {
+                $code = '—';
+            }
+            
+            // Obtener Clasificación CV
+            $cv_classification = get_user_meta($customer->ID, 'clasificacion-cv', true);
+            if ('' === $cv_classification) {
+                $cv_classification = '—';
+            }
+            
+            // Obtener URL del Store Manager
+            $store_manager_url = '';
+            if (function_exists('get_wcfm_vendors_manage_url')) {
+                $store_manager_url = get_wcfm_vendors_manage_url($customer->ID);
+            } elseif (function_exists('get_wcfm_url')) {
+                $store_manager_url = get_wcfm_url();
+            }
+            
             $customers_data[] = array(
                 'id' => $customer->ID,
                 'user_login' => $customer->user_login,
@@ -556,6 +649,8 @@ class WCFM_Affiliate_Vendor_Classification {
                 'full_name' => $full_name,
                 'email' => $customer->user_email,
                 'phone' => $phone ? $phone : '',
+                'code' => $code,
+                'cv_classification' => $cv_classification,
                 'revisado' => (bool) $revisado,
                 'contrato' => (bool) $contrato,
                 'interesa' => (bool) $interesa,
@@ -563,7 +658,8 @@ class WCFM_Affiliate_Vendor_Classification {
                 'no_interesa' => (bool) $no_interesa,
                 'comercio' => (bool) $comercio,
                 'comercial' => (bool) $comercial,
-                'registered' => $customer->user_registered
+                'registered' => $customer->user_registered,
+                'store_manager_url' => $store_manager_url
             );
         }
         
@@ -655,6 +751,54 @@ class WCFM_Affiliate_Vendor_Classification {
             'no_interesa' => $no_interesa,
             'comercio' => $comercio,
             'comercial' => $comercial
+        ));
+    }
+    
+    /**
+     * AJAX: Actualizar código ciudad virtual
+     */
+    public function ajax_update_customer_code() {
+        $customer_id = isset($_POST['customer_id']) ? intval($_POST['customer_id']) : 0;
+        $code = isset($_POST['code']) ? sanitize_text_field(wp_unslash($_POST['code'])) : '';
+        
+        if (!$customer_id) {
+            wp_send_json_error(array('message' => 'ID de cliente no válido'));
+        }
+        
+        $user = get_user_by('ID', $customer_id);
+        if (!$user) {
+            wp_send_json_error(array('message' => 'El usuario no existe'));
+        }
+        
+        update_user_meta($customer_id, 'codigo-ciudad-virtual', $code);
+        
+        wp_send_json_success(array(
+            'message' => 'Código actualizado correctamente',
+            'code' => $code !== '' ? $code : '—'
+        ));
+    }
+    
+    /**
+     * AJAX: Actualizar clasificación CV
+     */
+    public function ajax_update_customer_cv_classification() {
+        $customer_id = isset($_POST['customer_id']) ? intval($_POST['customer_id']) : 0;
+        $cv_classification = isset($_POST['cv_classification']) ? sanitize_text_field(wp_unslash($_POST['cv_classification'])) : '';
+        
+        if (!$customer_id) {
+            wp_send_json_error(array('message' => 'ID de cliente no válido'));
+        }
+        
+        $user = get_user_by('ID', $customer_id);
+        if (!$user) {
+            wp_send_json_error(array('message' => 'El usuario no existe'));
+        }
+        
+        update_user_meta($customer_id, 'clasificacion-cv', $cv_classification);
+        
+        wp_send_json_success(array(
+            'message' => 'Clasificación CV actualizada correctamente',
+            'cv_classification' => $cv_classification !== '' ? $cv_classification : '—'
         ));
     }
     

@@ -83,6 +83,15 @@
         });
         
         /**
+         * Cambio en lógica de filtros (AND/OR) - Buscar inmediatamente
+         */
+        $('input[name="filter-logic"]').on('change', function() {
+            currentPage = 1;
+            clearTimeout(searchTimeout);
+            loadCustomers();
+        });
+        
+        /**
          * Cambio en checkboxes de clasificación
          */
         $(document).on('change', '.classification-checkbox input[type="checkbox"]', function() {
@@ -197,6 +206,20 @@
     });
     
     /**
+     * Mostrar overlay de carga
+     */
+    function showLoadingOverlay() {
+        $('#classification-loading-overlay').fadeIn(200);
+    }
+    
+    /**
+     * Ocultar overlay de carga
+     */
+    function hideLoadingOverlay() {
+        $('#classification-loading-overlay').fadeOut(200);
+    }
+    
+    /**
      * Cargar clientes
      */
     function loadCustomers() {
@@ -207,18 +230,23 @@
         const filterEnEspera = $('.filter-checkbox[value="en_espera"]').is(':checked');
         const filterNoInteresa = $('.filter-checkbox[value="no_interesa"]').is(':checked');
         const filterComercial = $('.filter-checkbox[value="comercial"]').is(':checked');
+        const filterComercio = $('.filter-checkbox[value="comercio"]').is(':checked');
+        const filterLogic = $('input[name="filter-logic"]:checked').val() || 'AND';
         const orderBy = $('#order-by').val() || 'registered_desc';
         
-        console.log('🔄 Cargando clientes - Búsqueda:', searchTerm || '(sin filtro)', '- Página:', currentPage, '- Orden:', orderBy);
+        console.log('🔄 Cargando clientes - Búsqueda:', searchTerm || '(sin filtro)', '- Página:', currentPage, '- Orden:', orderBy, '- Lógica:', filterLogic);
         
         const $customersList = $('#customers-list');
         const $pagination = $('#classification-pagination');
         const $resultsCount = $('#search-results-count');
         
+        // Mostrar overlay de carga
+        showLoadingOverlay();
+        
         // Mostrar loading
         $customersList.html(`
             <tr>
-                <td colspan="11" class="loading-row">
+                <td colspan="13" class="loading-row">
                     <i class="fas fa-spinner fa-spin"></i>
                     Cargando clientes...
                 </td>
@@ -240,10 +268,15 @@
                 filter_interesa: filterInteresa ? 'true' : 'false',
                 filter_en_espera: filterEnEspera ? 'true' : 'false',
                 filter_no_interesa: filterNoInteresa ? 'true' : 'false',
-                filter_comercial: filterComercial ? 'true' : 'false'
+                filter_comercial: filterComercial ? 'true' : 'false',
+                filter_comercio: filterComercio ? 'true' : 'false',
+                filter_logic: filterLogic
             },
             success: function(response) {
                 console.log('✅ Clientes cargados:', response);
+                
+                // Ocultar overlay de carga
+                hideLoadingOverlay();
                 
                 if (response.success) {
                     const data = response.data;
@@ -263,7 +296,7 @@
                     } else {
                         $customersList.html(`
                             <tr class="no-results-row">
-                                <td colspan="11">
+                                <td colspan="13">
                                     <i class="fas fa-search"></i>
                                     <div>No se encontraron clientes con los criterios de búsqueda.</div>
                                 </td>
@@ -275,7 +308,7 @@
                     console.error('❌ Error en respuesta:', response);
                     $customersList.html(`
                         <tr class="no-results-row">
-                            <td colspan="11">
+                            <td colspan="13">
                                 <i class="fas fa-exclamation-triangle"></i>
                                 <div>Error al cargar clientes. Por favor, inténtalo de nuevo.</div>
                             </td>
@@ -285,9 +318,13 @@
             },
             error: function(xhr, status, error) {
                 console.error('❌ Error en AJAX:', {xhr, status, error});
+                
+                // Ocultar overlay de carga
+                hideLoadingOverlay();
+                
                 $customersList.html(`
                     <tr class="no-results-row">
-                        <td colspan="11">
+                        <td colspan="13">
                             <i class="fas fa-times-circle"></i>
                             <div>Error de conexión. Por favor, recarga la página.</div>
                         </td>
@@ -320,6 +357,20 @@
                     </td>
                     <td class="phone-column">
                         ${escapeHtml(customer.phone || '-')}
+                    </td>
+                    <td class="code-column">
+                        <div class="cv-code-cell" data-customer-id="${customer.id}">
+                            <span class="cv-code-display">${escapeHtml(customer.code || '—')}</span>
+                            <input type="text" class="cv-code-input" value="${escapeHtml(customer.code || '')}" style="display:none;" />
+                            <button type="button" class="cv-code-edit-btn" title="Editar código">✎</button>
+                        </div>
+                    </td>
+                    <td class="cv-classification-column">
+                        <div class="cv-classification-cell" data-customer-id="${customer.id}">
+                            <span class="cv-classification-display">${escapeHtml(customer.cv_classification || '—')}</span>
+                            <input type="text" class="cv-classification-input" value="${escapeHtml(customer.cv_classification || '')}" style="display:none;" />
+                            <button type="button" class="cv-classification-edit-btn" title="Editar clasificación CV">✎</button>
+                        </div>
                     </td>
                     <td class="revisado-column">
                         <div class="classification-checkbox">
@@ -389,6 +440,10 @@
                             <i class="fas fa-save"></i>
                             <span>Guardar</span>
                         </button>
+                        <a href="${customer.store_manager_url}" target="_blank" class="button button-small store-manager-btn" title="Ir al Store Manager">
+                            <i class="fas fa-store"></i>
+                            Store Manager
+                        </a>
                         <span class="save-status"></span>
                     </td>
                 </tr>
@@ -460,6 +515,194 @@
         };
         return String(text).replace(/[&<>"']/g, function(m) { return map[m]; });
     }
+    
+    /**
+     * Editar código ciudad virtual directamente en el listado
+     */
+    $(document).on('click', '.cv-code-edit-btn', function(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        
+        const $cell = $(this).closest('.cv-code-cell');
+        const $display = $cell.find('.cv-code-display');
+        const $input = $cell.find('.cv-code-input');
+        const $btn = $(this);
+        
+        if ($input.is(':visible')) {
+            // Guardar
+            const customerId = parseInt($cell.data('customer-id'), 10);
+            const newCode = $input.val().trim();
+            
+            if (!customerId) {
+                return;
+            }
+            
+            $.post(
+                wcfmVendorClassification.ajax_url,
+                {
+                    action: 'wcfm_update_customer_code',
+                    customer_id: customerId,
+                    code: newCode,
+                    nonce: wcfmVendorClassification.nonce
+                }
+            ).done(function(response) {
+                if (!response || !response.success) {
+                    alert('Error al guardar el código.');
+                    return;
+                }
+                
+                $display.text(response.data.code || '—');
+                $input.val(response.data.code || '');
+                $input.hide();
+                $display.show();
+                $btn.text('✎');
+            }).fail(function() {
+                alert('Error al guardar el código.');
+            });
+        } else {
+            // Editar
+            $display.hide();
+            $input.show().focus().select();
+            $btn.text('✓');
+            
+            // Activar el botón de guardar de la clasificación
+            const $row = $cell.closest('tr');
+            const $saveBtn = $row.find('.save-classification-btn');
+            if ($saveBtn.length) {
+                $saveBtn.prop('disabled', false);
+            }
+        }
+    });
+    
+    // Detectar cambios en el input del código CV para activar botón guardar
+    $(document).on('input', '.cv-code-input', function() {
+        const $cell = $(this).closest('.cv-code-cell');
+        const $row = $cell.closest('tr');
+        const $saveBtn = $row.find('.save-classification-btn');
+        if ($saveBtn.length) {
+            $saveBtn.prop('disabled', false);
+        }
+    });
+    
+    // Guardar al presionar Enter en el input
+    $(document).on('keydown', '.cv-code-input', function(event) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            $(this).closest('.cv-code-cell').find('.cv-code-edit-btn').click();
+        } else if (event.key === 'Escape') {
+            event.preventDefault();
+            const $cell = $(this).closest('.cv-code-cell');
+            const $display = $cell.find('.cv-code-display');
+            const $input = $cell.find('.cv-code-input');
+            const $btn = $cell.find('.cv-code-edit-btn');
+            $input.hide();
+            $display.show();
+            $btn.text('✎');
+            // Restaurar valor original
+            $input.val($display.text());
+        }
+    });
+    
+    /**
+     * Editar clasificación CV directamente en el listado
+     */
+    $(document).on('click', '.cv-classification-edit-btn', function(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        
+        const $cell = $(this).closest('.cv-classification-cell');
+        const $display = $cell.find('.cv-classification-display');
+        const $input = $cell.find('.cv-classification-input');
+        const $btn = $(this);
+        
+        if ($input.is(':visible')) {
+            // Guardar
+            const customerId = parseInt($cell.data('customer-id'), 10);
+            const newClassification = $input.val().trim();
+            
+            if (!customerId) {
+                return;
+            }
+            
+            $.post(
+                wcfmVendorClassification.ajax_url,
+                {
+                    action: 'wcfm_update_customer_cv_classification',
+                    customer_id: customerId,
+                    cv_classification: newClassification,
+                    nonce: wcfmVendorClassification.nonce
+                }
+            ).done(function(response) {
+                if (!response || !response.success) {
+                    alert('Error al guardar la clasificación CV.');
+                    return;
+                }
+                
+                $display.text(response.data.cv_classification || '—');
+                $input.val(response.data.cv_classification || '');
+                $input.hide();
+                $display.show();
+                $btn.text('✎');
+            }).fail(function() {
+                alert('Error al guardar la clasificación CV.');
+            });
+        } else {
+            // Editar
+            $display.hide();
+            $input.show().focus().select();
+            $btn.text('✓');
+            
+            // Activar el botón de guardar de la clasificación
+            const $row = $cell.closest('tr');
+            const $saveBtn = $row.find('.save-classification-btn');
+            if ($saveBtn.length) {
+                $saveBtn.prop('disabled', false);
+            }
+        }
+    });
+    
+    // Detectar cambios en el input de clasificación CV para activar botón guardar
+    $(document).on('input', '.cv-classification-input', function() {
+        const $cell = $(this).closest('.cv-classification-cell');
+        const $row = $cell.closest('tr');
+        const $saveBtn = $row.find('.save-classification-btn');
+        if ($saveBtn.length) {
+            $saveBtn.prop('disabled', false);
+        }
+    });
+    
+    // Guardar al presionar Enter en el input de clasificación CV
+    $(document).on('keydown', '.cv-classification-input', function(event) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            $(this).closest('.cv-classification-cell').find('.cv-classification-edit-btn').click();
+        } else if (event.key === 'Escape') {
+            event.preventDefault();
+            const $cell = $(this).closest('.cv-classification-cell');
+            const $display = $cell.find('.cv-classification-display');
+            const $input = $cell.find('.cv-classification-input');
+            const $btn = $cell.find('.cv-classification-edit-btn');
+            $input.hide();
+            $display.show();
+            $btn.text('✎');
+            // Restaurar valor original
+            $input.val($display.text());
+        }
+    });
+    
+    // Cancelar edición al hacer clic fuera
+    $(document).on('click', function(event) {
+        if (!$(event.target).closest('.cv-code-cell').length) {
+            $('.cv-code-input:visible').each(function() {
+                const $cell = $(this).closest('.cv-code-cell');
+                const $display = $cell.find('.cv-code-display');
+                const $btn = $cell.find('.cv-code-edit-btn');
+                $(this).hide();
+                $display.show();
+                $btn.text('✎');
+            });
+        }
+    });
     
 })(jQuery);
 
