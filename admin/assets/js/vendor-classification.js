@@ -246,7 +246,7 @@
         // Mostrar loading
         $customersList.html(`
             <tr>
-                <td colspan="13" class="loading-row">
+                <td colspan="10" class="loading-row">
                     <i class="fas fa-spinner fa-spin"></i>
                     Cargando clientes...
                 </td>
@@ -296,7 +296,7 @@
                     } else {
                         $customersList.html(`
                             <tr class="no-results-row">
-                                <td colspan="13">
+                                <td colspan="10">
                                     <i class="fas fa-search"></i>
                                     <div>No se encontraron clientes con los criterios de búsqueda.</div>
                                 </td>
@@ -308,7 +308,7 @@
                     console.error('❌ Error en respuesta:', response);
                     $customersList.html(`
                         <tr class="no-results-row">
-                            <td colspan="13">
+                            <td colspan="10">
                                 <i class="fas fa-exclamation-triangle"></i>
                                 <div>Error al cargar clientes. Por favor, inténtalo de nuevo.</div>
                             </td>
@@ -324,7 +324,7 @@
                 
                 $customersList.html(`
                     <tr class="no-results-row">
-                        <td colspan="13">
+                        <td colspan="10">
                             <i class="fas fa-times-circle"></i>
                             <div>Error de conexión. Por favor, recarga la página.</div>
                         </td>
@@ -350,11 +350,6 @@
                             <span class="customer-login">@${escapeHtml(customer.user_login)}</span>
                         </div>
                     </td>
-                    <td class="email-column">
-                        <a href="mailto:${escapeHtml(customer.email)}" class="customer-email" title="${escapeHtml(customer.email)}">
-                            ${escapeHtml(customer.email.length > 25 ? customer.email.substring(0, 25) + '...' : customer.email)}
-                        </a>
-                    </td>
                     <td class="phone-column">
                         ${escapeHtml(customer.phone || '-')}
                     </td>
@@ -365,7 +360,7 @@
                             <button type="button" class="cv-code-edit-btn" title="Editar código">✎</button>
                         </div>
                     </td>
-                    <td class="cv-classification-column">
+                    <td class="cv-classification-column" style="display: none;">
                         <div class="cv-classification-cell" data-customer-id="${customer.id}">
                             <span class="cv-classification-display">${escapeHtml(customer.cv_classification || '—')}</span>
                             <input type="text" class="cv-classification-input" value="${escapeHtml(customer.cv_classification || '')}" style="display:none;" />
@@ -440,10 +435,16 @@
                             <i class="fas fa-save"></i>
                             <span>Guardar</span>
                         </button>
-                        <a href="${customer.store_manager_url}" target="_blank" class="button button-small store-manager-btn" title="Ir al Store Manager">
-                            <i class="fas fa-store"></i>
-                            Store Manager
-                        </a>
+                        <div class="actions-buttons-vertical">
+                            <a href="${customer.store_manager_url}" target="_blank" class="button button-small store-manager-btn" title="Ir a la Tienda">
+                                <i class="fas fa-store"></i>
+                                Tienda
+                            </a>
+                            <button type="button" class="button button-small crm-link-btn" data-customer-id="${customer.id}" data-crm-link="${escapeHtml(customer.crm_link || '')}" title="Link a CRM">
+                                <i class="fas fa-external-link-alt"></i>
+                                CRM
+                            </button>
+                        </div>
                         <span class="save-status"></span>
                     </td>
                 </tr>
@@ -703,6 +704,164 @@
             });
         }
     });
+    
+    /**
+     * Botón Link a CRM - Mostrar modal y gestionar link
+     */
+    $(document).on('click', '.crm-link-btn', function(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        
+        const $btn = $(this);
+        const customerId = parseInt($btn.data('customer-id'), 10);
+        let currentCrmLink = $btn.data('crm-link') || '';
+        
+        // Si no hay link, obtenerlo del servidor
+        if (!currentCrmLink) {
+            $.post(
+                wcfmVendorClassification.ajax_url,
+                {
+                    action: 'wcfm_get_customer_crm_link',
+                    customer_id: customerId,
+                    nonce: wcfmVendorClassification.nonce
+                }
+            ).done(function(response) {
+                if (response && response.success) {
+                    currentCrmLink = response.data.crm_link || '';
+                    showCrmLinkModal(customerId, currentCrmLink);
+                } else {
+                    showCrmLinkModal(customerId, '');
+                }
+            }).fail(function() {
+                showCrmLinkModal(customerId, '');
+            });
+        } else {
+            showCrmLinkModal(customerId, currentCrmLink);
+        }
+    });
+    
+    /**
+     * Mostrar modal para editar link CRM
+     */
+    function showCrmLinkModal(customerId, crmLink) {
+        // Crear modal si no existe
+        if ($('#crm-link-modal').length === 0) {
+            $('body').append(`
+                <div id="crm-link-modal" class="crm-link-modal" style="display: none;">
+                    <div class="crm-link-modal-overlay"></div>
+                    <div class="crm-link-modal-content">
+                        <div class="crm-link-modal-header">
+                            <h3><i class="fas fa-external-link-alt"></i> Link a CRM</h3>
+                            <button type="button" class="crm-link-modal-close" title="Cerrar">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <div class="crm-link-modal-body">
+                            <label for="crm-link-input">
+                                <strong>URL del CRM:</strong>
+                            </label>
+                            <input 
+                                type="url" 
+                                id="crm-link-input" 
+                                class="crm-link-input" 
+                                placeholder="https://ejemplo.com/crm/cliente-123"
+                                value=""
+                            >
+                            <p class="crm-link-help">
+                                <i class="fas fa-info-circle"></i>
+                                Ingresa la URL completa del CRM para este cliente.
+                            </p>
+                        </div>
+                        <div class="crm-link-modal-footer">
+                            <button type="button" class="crm-link-cancel-btn button">Cancelar</button>
+                            <button type="button" class="crm-link-open-btn button" style="display: none;">Abrir</button>
+                            <button type="button" class="crm-link-save-btn button button-primary">Guardar y Abrir</button>
+                        </div>
+                    </div>
+                </div>
+            `);
+            
+            // Eventos del modal
+            $(document).on('click', '.crm-link-modal-close, .crm-link-modal-overlay, .crm-link-cancel-btn', function() {
+                $('#crm-link-modal').fadeOut(200);
+            });
+            
+            $(document).on('click', '.crm-link-open-btn', function() {
+                const currentLink = $('#crm-link-input').val().trim();
+                if (currentLink) {
+                    window.open(currentLink, '_blank');
+                }
+            });
+            
+            $(document).on('click', '.crm-link-save-btn', function() {
+                const newLink = $('#crm-link-input').val().trim();
+                const modalCustomerId = parseInt($('#crm-link-modal').data('customer-id'), 10);
+                
+                if (!newLink) {
+                    alert('Por favor, ingresa una URL válida.');
+                    return;
+                }
+                
+                // Validar URL básica
+                try {
+                    new URL(newLink);
+                } catch (e) {
+                    alert('Por favor, ingresa una URL válida (debe comenzar con http:// o https://).');
+                    return;
+                }
+                
+                // Guardar link
+                $.post(
+                    wcfmVendorClassification.ajax_url,
+                    {
+                        action: 'wcfm_update_customer_crm_link',
+                        customer_id: modalCustomerId,
+                        crm_link: newLink,
+                        nonce: wcfmVendorClassification.nonce
+                    }
+                ).done(function(response) {
+                    if (response && response.success) {
+                        // Actualizar botón
+                        const $btn = $(`.crm-link-btn[data-customer-id="${modalCustomerId}"]`);
+                        $btn.data('crm-link', newLink);
+                        
+                        // Cerrar modal
+                        $('#crm-link-modal').fadeOut(200);
+                        
+                        // Abrir link en nueva pestaña
+                        if (newLink) {
+                            window.open(newLink, '_blank');
+                        }
+                    } else {
+                        alert('Error al guardar el link CRM.');
+                    }
+                }).fail(function() {
+                    alert('Error al guardar el link CRM.');
+                });
+            });
+            
+            // Cerrar con Escape
+            $(document).on('keydown', function(event) {
+                if (event.key === 'Escape' && $('#crm-link-modal').is(':visible')) {
+                    $('#crm-link-modal').fadeOut(200);
+                }
+            });
+        }
+        
+        // Mostrar modal y establecer datos
+        $('#crm-link-modal').data('customer-id', customerId);
+        $('#crm-link-input').val(crmLink);
+        
+        // Mostrar/ocultar botón "Abrir" según si hay link
+        if (crmLink && crmLink.trim() !== '') {
+            $('.crm-link-open-btn').show();
+        } else {
+            $('.crm-link-open-btn').hide();
+        }
+        
+        $('#crm-link-modal').fadeIn(200);
+        $('#crm-link-input').focus().select();
+    }
     
 })(jQuery);
 

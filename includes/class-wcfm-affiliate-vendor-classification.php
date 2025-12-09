@@ -33,6 +33,8 @@ class WCFM_Affiliate_Vendor_Classification {
         add_action('wp_ajax_wcfm_update_customer_classification', array($this, 'ajax_update_classification'));
         add_action('wp_ajax_wcfm_update_customer_code', array($this, 'ajax_update_customer_code'));
         add_action('wp_ajax_wcfm_update_customer_cv_classification', array($this, 'ajax_update_customer_cv_classification'));
+        add_action('wp_ajax_wcfm_get_customer_crm_link', array($this, 'ajax_get_customer_crm_link'));
+        add_action('wp_ajax_wcfm_update_customer_crm_link', array($this, 'ajax_update_customer_crm_link'));
     }
     
     /**
@@ -209,10 +211,6 @@ class WCFM_Affiliate_Vendor_Classification {
                                     <i class="fas fa-user"></i>
                                     Cliente
                                 </th>
-                                <th class="email-column">
-                                    <i class="fas fa-envelope"></i>
-                                    Email
-                                </th>
                                 <th class="phone-column">
                                     <i class="fas fa-phone"></i>
                                     Teléfono
@@ -221,7 +219,7 @@ class WCFM_Affiliate_Vendor_Classification {
                                     <i class="fas fa-key"></i>
                                     Código CV
                                 </th>
-                                <th class="cv-classification-column">
+                                <th class="cv-classification-column" style="display: none;">
                                     <i class="fas fa-tag"></i>
                                     Clasificación CV
                                 </th>
@@ -261,7 +259,7 @@ class WCFM_Affiliate_Vendor_Classification {
                         </thead>
                         <tbody id="customers-list">
                             <tr>
-                                <td colspan="12" class="loading-row">
+                                <td colspan="10" class="loading-row">
                                     <i class="fas fa-spinner fa-spin"></i>
                                     Cargando clientes...
                                 </td>
@@ -642,6 +640,12 @@ class WCFM_Affiliate_Vendor_Classification {
                 $store_manager_url = get_wcfm_url();
             }
             
+            // Obtener link CRM
+            $crm_link = get_user_meta($customer->ID, 'crm_link', true);
+            if ('' === $crm_link) {
+                $crm_link = '';
+            }
+            
             $customers_data[] = array(
                 'id' => $customer->ID,
                 'user_login' => $customer->user_login,
@@ -659,7 +663,8 @@ class WCFM_Affiliate_Vendor_Classification {
                 'comercio' => (bool) $comercio,
                 'comercial' => (bool) $comercial,
                 'registered' => $customer->user_registered,
-                'store_manager_url' => $store_manager_url
+                'store_manager_url' => $store_manager_url,
+                'crm_link' => $crm_link
             );
         }
         
@@ -799,6 +804,52 @@ class WCFM_Affiliate_Vendor_Classification {
         wp_send_json_success(array(
             'message' => 'Clasificación CV actualizada correctamente',
             'cv_classification' => $cv_classification !== '' ? $cv_classification : '—'
+        ));
+    }
+    
+    /**
+     * AJAX: Obtener link CRM del cliente
+     */
+    public function ajax_get_customer_crm_link() {
+        $customer_id = isset($_POST['customer_id']) ? intval($_POST['customer_id']) : 0;
+        
+        if (!$customer_id) {
+            wp_send_json_error(array('message' => 'ID de cliente no válido'));
+        }
+        
+        $user = get_user_by('ID', $customer_id);
+        if (!$user) {
+            wp_send_json_error(array('message' => 'El usuario no existe'));
+        }
+        
+        $crm_link = get_user_meta($customer_id, 'crm_link', true);
+        
+        wp_send_json_success(array(
+            'crm_link' => $crm_link !== '' ? $crm_link : ''
+        ));
+    }
+    
+    /**
+     * AJAX: Actualizar link CRM del cliente
+     */
+    public function ajax_update_customer_crm_link() {
+        $customer_id = isset($_POST['customer_id']) ? intval($_POST['customer_id']) : 0;
+        $crm_link = isset($_POST['crm_link']) ? esc_url_raw(wp_unslash($_POST['crm_link'])) : '';
+        
+        if (!$customer_id) {
+            wp_send_json_error(array('message' => 'ID de cliente no válido'));
+        }
+        
+        $user = get_user_by('ID', $customer_id);
+        if (!$user) {
+            wp_send_json_error(array('message' => 'El usuario no existe'));
+        }
+        
+        update_user_meta($customer_id, 'crm_link', $crm_link);
+        
+        wp_send_json_success(array(
+            'message' => 'Link CRM actualizado correctamente',
+            'crm_link' => $crm_link
         ));
     }
     
