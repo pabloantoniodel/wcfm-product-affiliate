@@ -45,10 +45,12 @@ class WCFM_Affiliate_Bulk_Manager {
      * Add admin menu
      */
     public function add_admin_menu() {
+        error_log('🔧 WCFM Bulk Manager: Registrando menú principal...');
+        
         // Menú principal
-        add_menu_page(
-            __('Productos Afiliados', 'wcfm-product-affiliate'),
-            __('Productos Afiliados', 'wcfm-product-affiliate'),
+        $hook = add_menu_page(
+            __('CV Productos Afiliados', 'wcfm-product-affiliate'),
+            __('CV Productos Afiliados', 'wcfm-product-affiliate'),
             'manage_woocommerce',
             'wcfm-affiliate-bulk',
             array($this, 'render_page'),
@@ -56,8 +58,11 @@ class WCFM_Affiliate_Bulk_Manager {
             56
         );
         
+        error_log('🔧 WCFM Bulk Manager: Menú principal registrado - Hook: ' . ($hook ? $hook : 'NULL'));
+        
         // Submenú "Gestión Masiva"
-        add_submenu_page(
+        error_log('🔧 WCFM Bulk Manager: Registrando submenú Gestión Masiva...');
+        $submenu_hook = add_submenu_page(
             'wcfm-affiliate-bulk',
             __('Gestión Masiva', 'wcfm-product-affiliate'),
             __('Gestión Masiva', 'wcfm-product-affiliate'),
@@ -65,6 +70,7 @@ class WCFM_Affiliate_Bulk_Manager {
             'wcfm-affiliate-bulk',
             array($this, 'render_page')
         );
+        error_log('🔧 WCFM Bulk Manager: Submenú Gestión Masiva registrado - Hook: ' . ($submenu_hook ? $submenu_hook : 'NULL'));
     }
     
     /**

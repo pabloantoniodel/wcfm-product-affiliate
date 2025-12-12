@@ -61,9 +61,10 @@ class WCFM_Affiliate_Vendor_Classification {
     public function enqueue_scripts($hook) {
         error_log('🎨 WCFM Classification: enqueue_scripts called - Hook: ' . $hook);
         
-        // El hook correcto es: productos-afiliados_page_clasificacion-clientes
-        if ($hook !== 'productos-afiliados_page_clasificacion-clientes') {
-            error_log('⏭️ WCFM Classification: Hook no coincide, saltando...');
+        // El hook debe contener 'clasificacion-clientes' para la página de clasificación
+        // WordPress puede generar diferentes hooks dependiendo del título del menú padre
+        if (strpos($hook, 'clasificacion-clientes') === false) {
+            error_log('⏭️ WCFM Classification: Hook no coincide (' . $hook . '), saltando...');
             return;
         }
         
@@ -102,7 +103,7 @@ class WCFM_Affiliate_Vendor_Classification {
             </h1>
             
             <p class="description">
-                Clasifica a tus clientes con los siguientes estados: Revisado, Contrato, Interesa, En Espera, No interesa. Todos los checkboxes están desactivados por defecto.
+                Clasifica a tus clientes con los siguientes estados: Revisado, Contrato, Interesa, En Espera, No interesa. Por defecto se muestran solo los vendedores con el filtro "Vendedor" activado y condición AND.
             </p>
             
             <div class="wcfm-classification-container">
@@ -114,6 +115,19 @@ class WCFM_Affiliate_Vendor_Classification {
                         <p class="classification-loading-text">Cargando filtros...</p>
                     </div>
                 </div>
+                <script type="text/javascript">
+                // Asegurar que el filtro "Vendedor" esté marcado por defecto al cargar
+                jQuery(document).ready(function($) {
+                    // Marcar el checkbox de "Vendedor" si no está marcado
+                    if (!$('.filter-checkbox[value="comercio"]').is(':checked')) {
+                        $('.filter-checkbox[value="comercio"]').prop('checked', true);
+                    }
+                    // Asegurar que AND esté seleccionado
+                    if (!$('input[name="filter-logic"][value="AND"]').is(':checked')) {
+                        $('input[name="filter-logic"][value="AND"]').prop('checked', true);
+                    }
+                });
+                </script>
                 
                 <!-- Buscador -->
                 <div class="wcfm-classification-search">
@@ -122,7 +136,7 @@ class WCFM_Affiliate_Vendor_Classification {
                         <input 
                             type="text" 
                             id="customer-search" 
-                            placeholder="Buscar por nombre, email, teléfono o código CV..."
+                            placeholder="Buscar por nombre, email, teléfono, código CV, dirección, ciudad, provincia, país..."
                             autocomplete="off"
                         >
                         <button type="button" id="clear-search" class="clear-btn" style="display: none;">
@@ -163,7 +177,7 @@ class WCFM_Affiliate_Vendor_Classification {
                                         Comercial
                                     </label>
                                     <label style="display: flex; align-items: center; cursor: pointer;">
-                                        <input type="checkbox" class="filter-checkbox" value="comercio" style="margin-right: 5px;">
+                                        <input type="checkbox" class="filter-checkbox" value="comercio" checked style="margin-right: 5px;">
                                         Vendedor
                                     </label>
                                 </div>
@@ -288,18 +302,46 @@ class WCFM_Affiliate_Vendor_Classification {
         $page = isset($_POST['page']) ? intval($_POST['page']) : 1;
         $per_page = 20;
         $order_by = isset($_POST['order_by']) ? sanitize_text_field($_POST['order_by']) : 'registered_desc';
-        $filter_logic = isset($_POST['filter_logic']) ? sanitize_text_field($_POST['filter_logic']) : 'AND';
+        $filter_logic_raw = isset($_POST['filter_logic']) ? $_POST['filter_logic'] : 'AND';
+        $filter_logic = ($filter_logic_raw === 'OR') ? 'OR' : 'AND'; // Asegurar que sea AND u OR
         
-        // Filtros por checkboxes
-        $filter_revisado = isset($_POST['filter_revisado']) && $_POST['filter_revisado'] === 'true';
-        $filter_contrato = isset($_POST['filter_contrato']) && $_POST['filter_contrato'] === 'true';
-        $filter_interesa = isset($_POST['filter_interesa']) && $_POST['filter_interesa'] === 'true';
-        $filter_en_espera = isset($_POST['filter_en_espera']) && $_POST['filter_en_espera'] === 'true';
-        $filter_no_interesa = isset($_POST['filter_no_interesa']) && $_POST['filter_no_interesa'] === 'true';
-        $filter_comercial = isset($_POST['filter_comercial']) && $_POST['filter_comercial'] === 'true';
-        $filter_comercio = isset($_POST['filter_comercio']) && $_POST['filter_comercio'] === 'true';
+        // Filtros por checkboxes - Leer valores recibidos
+        $filter_revisado_raw = isset($_POST['filter_revisado']) ? $_POST['filter_revisado'] : 'false';
+        $filter_contrato_raw = isset($_POST['filter_contrato']) ? $_POST['filter_contrato'] : 'false';
+        $filter_interesa_raw = isset($_POST['filter_interesa']) ? $_POST['filter_interesa'] : 'false';
+        $filter_en_espera_raw = isset($_POST['filter_en_espera']) ? $_POST['filter_en_espera'] : 'false';
+        $filter_no_interesa_raw = isset($_POST['filter_no_interesa']) ? $_POST['filter_no_interesa'] : 'false';
+        $filter_comercial_raw = isset($_POST['filter_comercial']) ? $_POST['filter_comercial'] : 'false';
+        $filter_comercio_raw = isset($_POST['filter_comercio']) ? $_POST['filter_comercio'] : 'false';
+        
+        // Convertir a boolean estricto
+        $filter_revisado = ($filter_revisado_raw === 'true');
+        $filter_contrato = ($filter_contrato_raw === 'true');
+        $filter_interesa = ($filter_interesa_raw === 'true');
+        $filter_en_espera = ($filter_en_espera_raw === 'true');
+        $filter_no_interesa = ($filter_no_interesa_raw === 'true');
+        $filter_comercial = ($filter_comercial_raw === 'true');
+        $filter_comercio = ($filter_comercio_raw === 'true');
         
         error_log('🔍 WCFM Classification: Buscando clientes - Search: "' . $search . '" - Página: ' . $page . ' - Orden: ' . $order_by);
+        error_log('🔍 WCFM Classification: Valores RAW recibidos - revisado: "' . $filter_revisado_raw . '" (tipo: ' . gettype($filter_revisado_raw) . ')' . 
+                  ', contrato: "' . $filter_contrato_raw . '"' . 
+                  ', interesa: "' . $filter_interesa_raw . '"' . 
+                  ', en_espera: "' . $filter_en_espera_raw . '"' . 
+                  ', no_interesa: "' . $filter_no_interesa_raw . '"' . 
+                  ', comercial: "' . $filter_comercial_raw . '"' . 
+                  ', comercio: "' . $filter_comercio_raw . '"' . 
+                  ', lógica RAW: "' . $filter_logic_raw . '"' . 
+                  ', lógica procesada: "' . $filter_logic . '"');
+        error_log('🔍 WCFM Classification: Filtros procesados (boolean) - revisado: ' . ($filter_revisado ? 'true' : 'false') . 
+                  ', contrato: ' . ($filter_contrato ? 'true' : 'false') . 
+                  ', interesa: ' . ($filter_interesa ? 'true' : 'false') . 
+                  ', en_espera: ' . ($filter_en_espera ? 'true' : 'false') . 
+                  ', no_interesa: ' . ($filter_no_interesa ? 'true' : 'false') . 
+                  ', comercial: ' . ($filter_comercial ? 'true' : 'false') . 
+                  ', comercio: ' . ($filter_comercio ? 'true' : 'false'));
+        error_log('🔍 WCFM Classification: IMPORTANTE - Orden y filtros se aplican con AND. Orden: ' . $order_by . 
+                  ', Filtros activos: ' . (($filter_revisado || $filter_contrato || $filter_interesa || $filter_en_espera || $filter_no_interesa || $filter_comercial || $filter_comercio) ? 'SÍ' : 'NO'));
         
         global $wpdb;
         
@@ -327,46 +369,96 @@ class WCFM_Affiliate_Vendor_Classification {
                 LOWER(COALESCE(um_first.meta_value, '')) LIKE %s OR
                 LOWER(COALESCE(um_last.meta_value, '')) LIKE %s OR
                 LOWER(COALESCE(um_phone.meta_value, '')) LIKE %s OR
-                LOWER(COALESCE(um_code.meta_value, '')) LIKE %s
-            )", $search_like_lower, $search_like_lower, $search_like_lower, $search_like_lower, $search_like_lower, $search_like_lower, $search_like_lower);
+                LOWER(COALESCE(um_code.meta_value, '')) LIKE %s OR
+                LOWER(COALESCE(um_address1.meta_value, '')) LIKE %s OR
+                LOWER(COALESCE(um_address2.meta_value, '')) LIKE %s OR
+                LOWER(COALESCE(um_city.meta_value, '')) LIKE %s OR
+                LOWER(COALESCE(um_state.meta_value, '')) LIKE %s OR
+                LOWER(COALESCE(um_postcode.meta_value, '')) LIKE %s OR
+                LOWER(COALESCE(um_country.meta_value, '')) LIKE %s
+            )", $search_like_lower, $search_like_lower, $search_like_lower, $search_like_lower, $search_like_lower, $search_like_lower, $search_like_lower, $search_like_lower, $search_like_lower, $search_like_lower, $search_like_lower, $search_like_lower, $search_like_lower);
             
             // Construir WHERE para filtros de checkboxes
+            // IMPORTANTE: Si un checkbox está marcado, incluir solo los que tienen ese campo = '1'
+            // Si un checkbox está desmarcado, excluir los que tienen ese campo = '1' (mostrar solo los que NO tienen o tienen '0')
             $filter_where = '';
-            $filter_conditions = array();
+            $filter_conditions_include = array(); // Filtros para incluir (checkboxes marcados)
+            $filter_conditions_exclude = array(); // Filtros para excluir (checkboxes desmarcados)
+            
             if ($filter_revisado) {
-                $filter_conditions[] = "um_revisado.meta_value = '1'";
+                $filter_conditions_include[] = "um_revisado.meta_value = '1'";
+            } else {
+                // Excluir los revisados: mostrar solo los que NO tienen el meta o tienen '0'
+                $filter_conditions_exclude[] = "(um_revisado.meta_value IS NULL OR um_revisado.meta_value = '' OR um_revisado.meta_value = '0')";
             }
             if ($filter_contrato) {
-                $filter_conditions[] = "um_contrato.meta_value = '1'";
+                $filter_conditions_include[] = "um_contrato.meta_value = '1'";
+            } else {
+                $filter_conditions_exclude[] = "(um_contrato.meta_value IS NULL OR um_contrato.meta_value = '' OR um_contrato.meta_value = '0')";
             }
             if ($filter_interesa) {
-                $filter_conditions[] = "um_interesa.meta_value = '1'";
+                $filter_conditions_include[] = "um_interesa.meta_value = '1'";
+            } else {
+                $filter_conditions_exclude[] = "(um_interesa.meta_value IS NULL OR um_interesa.meta_value = '' OR um_interesa.meta_value = '0')";
             }
             if ($filter_en_espera) {
-                $filter_conditions[] = "um_en_espera.meta_value = '1'";
+                $filter_conditions_include[] = "um_en_espera.meta_value = '1'";
+            } else {
+                $filter_conditions_exclude[] = "(um_en_espera.meta_value IS NULL OR um_en_espera.meta_value = '' OR um_en_espera.meta_value = '0')";
             }
             if ($filter_no_interesa) {
-                $filter_conditions[] = "um_no_interesa.meta_value = '1'";
+                $filter_conditions_include[] = "um_no_interesa.meta_value = '1'";
+            } else {
+                $filter_conditions_exclude[] = "(um_no_interesa.meta_value IS NULL OR um_no_interesa.meta_value = '' OR um_no_interesa.meta_value = '0')";
             }
             if ($filter_comercial) {
                 // Comercial: incluir los que tienen '1' o NULL (por defecto es true si no existe)
-                $filter_conditions[] = "(um_comercial.meta_value = '1' OR um_comercial.meta_value IS NULL OR um_comercial.meta_value = '')";
+                $filter_conditions_include[] = "(um_comercial.meta_value = '1' OR um_comercial.meta_value IS NULL OR um_comercial.meta_value = '')";
+            } else {
+                // Excluir los comerciales: mostrar solo los que tienen '0'
+                $filter_conditions_exclude[] = "(um_comercial.meta_value = '0')";
             }
             if ($filter_comercio) {
                 // Comercio: incluir los que tienen '1' o NULL (por defecto es true si no existe)
-                $filter_conditions[] = "(um_comercio.meta_value = '1' OR um_comercio.meta_value IS NULL OR um_comercio.meta_value = '')";
+                $filter_conditions_include[] = "(um_comercio.meta_value = '1' OR um_comercio.meta_value IS NULL OR um_comercio.meta_value = '')";
+            } else {
+                // Excluir los comercio: mostrar solo los que tienen '0'
+                $filter_conditions_exclude[] = "(um_comercio.meta_value = '0')";
             }
             
-            if (!empty($filter_conditions)) {
-                // Usar AND u OR según la selección del usuario
-                $filter_operator = ($filter_logic === 'OR') ? ' OR ' : ' AND ';
-                $filter_where = ' AND (' . implode($filter_operator, $filter_conditions) . ')';
+            // Combinar condiciones: primero las de inclusión (con AND/OR según filter_logic), luego las de exclusión (siempre con AND)
+            $all_conditions = array();
+            if (!empty($filter_conditions_include)) {
+                $include_operator = ($filter_logic === 'OR') ? ' OR ' : ' AND ';
+                if (count($filter_conditions_include) > 1) {
+                    $all_conditions[] = '(' . implode($include_operator, $filter_conditions_include) . ')';
+                } else {
+                    $all_conditions[] = $filter_conditions_include[0];
+                }
+            }
+            if (!empty($filter_conditions_exclude)) {
+                // Las exclusiones siempre se aplican con AND
+                foreach ($filter_conditions_exclude as $exclude_condition) {
+                    $all_conditions[] = $exclude_condition;
+                }
+            }
+            
+            // Aplicar todas las condiciones con AND
+            if (!empty($all_conditions)) {
+                $filter_where = ' AND (' . implode(' AND ', $all_conditions) . ')';
+                error_log('🔍 WCFM Classification: Aplicando filtros SQL - Incluir: ' . count($filter_conditions_include) . ', Excluir: ' . count($filter_conditions_exclude) . ', Lógica: ' . $filter_logic);
+                error_log('🔍 WCFM Classification: SQL WHERE generado: ' . $filter_where);
+            } else {
+                error_log('🔍 WCFM Classification: NO hay filtros activos - Mostrando TODOS los vendedores');
             }
             
             // Construir ORDER BY según el criterio seleccionado
             $order_clause = self::build_order_clause($order_by);
             
             // Query para obtener IDs
+            // IMPORTANTE: La búsqueda de texto (search_where) y el orden (order_clause) 
+            // siempre se aplican con AND respecto a los filtros de checkboxes
+            // Los filtros de checkboxes entre sí pueden ser AND u OR según filter_logic
             $user_ids_query = "
                 SELECT DISTINCT u.ID 
                 FROM {$wpdb->users} u
@@ -381,6 +473,18 @@ class WCFM_Affiliate_Vendor_Classification {
                     AND um_phone.meta_key = 'billing_phone'
                 LEFT JOIN {$wpdb->usermeta} um_code ON u.ID = um_code.user_id 
                     AND um_code.meta_key = 'codigo-ciudad-virtual'
+                LEFT JOIN {$wpdb->usermeta} um_address1 ON u.ID = um_address1.user_id 
+                    AND um_address1.meta_key = 'billing_address_1'
+                LEFT JOIN {$wpdb->usermeta} um_address2 ON u.ID = um_address2.user_id 
+                    AND um_address2.meta_key = 'billing_address_2'
+                LEFT JOIN {$wpdb->usermeta} um_city ON u.ID = um_city.user_id 
+                    AND um_city.meta_key = 'billing_city'
+                LEFT JOIN {$wpdb->usermeta} um_state ON u.ID = um_state.user_id 
+                    AND um_state.meta_key = 'billing_state'
+                LEFT JOIN {$wpdb->usermeta} um_postcode ON u.ID = um_postcode.user_id 
+                    AND um_postcode.meta_key = 'billing_postcode'
+                LEFT JOIN {$wpdb->usermeta} um_country ON u.ID = um_country.user_id 
+                    AND um_country.meta_key = 'billing_country'
                 LEFT JOIN {$wpdb->usermeta} um_revisado ON u.ID = um_revisado.user_id 
                     AND um_revisado.meta_key = 'customer_revisado'
                 LEFT JOIN {$wpdb->usermeta} um_contrato ON u.ID = um_contrato.user_id 
@@ -400,6 +504,11 @@ class WCFM_Affiliate_Vendor_Classification {
                 {$order_clause}
             ";
             
+            $total_filter_conditions = count($filter_conditions_include) + count($filter_conditions_exclude);
+            error_log('🔍 WCFM Classification: Query SQL completa - Search: ' . (!empty($search) ? 'SÍ' : 'NO') . 
+                      ', Filtros: ' . (!empty($filter_where) ? 'SÍ (' . $total_filter_conditions . ')' : 'NO') . 
+                      ', Orden: ' . $order_by);
+            
             // Query para obtener total (sin LIMIT)
             $total_query = "
                 SELECT COUNT(DISTINCT u.ID) 
@@ -415,6 +524,18 @@ class WCFM_Affiliate_Vendor_Classification {
                     AND um_phone.meta_key = 'billing_phone'
                 LEFT JOIN {$wpdb->usermeta} um_code ON u.ID = um_code.user_id 
                     AND um_code.meta_key = 'codigo-ciudad-virtual'
+                LEFT JOIN {$wpdb->usermeta} um_address1 ON u.ID = um_address1.user_id 
+                    AND um_address1.meta_key = 'billing_address_1'
+                LEFT JOIN {$wpdb->usermeta} um_address2 ON u.ID = um_address2.user_id 
+                    AND um_address2.meta_key = 'billing_address_2'
+                LEFT JOIN {$wpdb->usermeta} um_city ON u.ID = um_city.user_id 
+                    AND um_city.meta_key = 'billing_city'
+                LEFT JOIN {$wpdb->usermeta} um_state ON u.ID = um_state.user_id 
+                    AND um_state.meta_key = 'billing_state'
+                LEFT JOIN {$wpdb->usermeta} um_postcode ON u.ID = um_postcode.user_id 
+                    AND um_postcode.meta_key = 'billing_postcode'
+                LEFT JOIN {$wpdb->usermeta} um_country ON u.ID = um_country.user_id 
+                    AND um_country.meta_key = 'billing_country'
                 LEFT JOIN {$wpdb->usermeta} um_revisado ON u.ID = um_revisado.user_id 
                     AND um_revisado.meta_key = 'customer_revisado'
                 LEFT JOIN {$wpdb->usermeta} um_contrato ON u.ID = um_contrato.user_id 
@@ -432,6 +553,10 @@ class WCFM_Affiliate_Vendor_Classification {
                 WHERE {$search_where}
                 {$filter_where}
             ";
+            
+            $total_filter_conditions_total = count($filter_conditions_include) + count($filter_conditions_exclude);
+            error_log('🔍 WCFM Classification: Query Total SQL - Search: ' . (!empty($search) ? 'SÍ' : 'NO') . 
+                      ', Filtros: ' . (!empty($filter_where) ? 'SÍ (' . $total_filter_conditions_total . ')' : 'NO'));
             
             $total = $wpdb->get_var($total_query);
             
@@ -457,6 +582,9 @@ class WCFM_Affiliate_Vendor_Classification {
             error_log('🔍 WCFM Classification: Búsqueda personalizada - Encontrados ' . count($customers) . ' clientes (Total: ' . $total . ')');
         } else {
             // Sin búsqueda de texto, usar WP_User_Query normal
+            // IMPORTANTE: El orden siempre se aplica, y los filtros de checkboxes se combinan con AND u OR según filter_logic
+            // La búsqueda de texto (si existiera) siempre sería AND con los filtros, pero aquí no hay búsqueda
+            
             // Determinar orderby y order según el criterio seleccionado
             $orderby = 'registered';
             $order = 'DESC';
@@ -497,47 +625,140 @@ class WCFM_Affiliate_Vendor_Classification {
             );
             
             // Construir meta_query solo para filtros de checkboxes
-            $meta_queries = array();
+            // IMPORTANTE: Si un checkbox está marcado, incluir solo los que tienen ese campo = '1'
+            // Si un checkbox está desmarcado, excluir los que tienen ese campo = '1'
+            $meta_queries_include = array(); // Filtros para incluir (checkboxes marcados)
+            $meta_queries_exclude = array(); // Filtros para excluir (checkboxes desmarcados)
             
             if ($filter_revisado) {
-                $meta_queries[] = array(
+                $meta_queries_include[] = array(
                     'key' => 'customer_revisado',
                     'value' => '1',
                     'compare' => '='
                 );
+            } else {
+                // Excluir los revisados: mostrar solo los que NO tienen el meta o tienen '0'
+                $meta_queries_exclude[] = array(
+                    'relation' => 'OR',
+                    array(
+                        'key' => 'customer_revisado',
+                        'compare' => 'NOT EXISTS'
+                    ),
+                    array(
+                        'key' => 'customer_revisado',
+                        'value' => '',
+                        'compare' => '='
+                    ),
+                    array(
+                        'key' => 'customer_revisado',
+                        'value' => '0',
+                        'compare' => '='
+                    )
+                );
             }
             if ($filter_contrato) {
-                $meta_queries[] = array(
+                $meta_queries_include[] = array(
                     'key' => 'customer_contrato',
                     'value' => '1',
                     'compare' => '='
                 );
+            } else {
+                $meta_queries_exclude[] = array(
+                    'relation' => 'OR',
+                    array(
+                        'key' => 'customer_contrato',
+                        'compare' => 'NOT EXISTS'
+                    ),
+                    array(
+                        'key' => 'customer_contrato',
+                        'value' => '',
+                        'compare' => '='
+                    ),
+                    array(
+                        'key' => 'customer_contrato',
+                        'value' => '0',
+                        'compare' => '='
+                    )
+                );
             }
             if ($filter_interesa) {
-                $meta_queries[] = array(
+                $meta_queries_include[] = array(
                     'key' => 'customer_interesa',
                     'value' => '1',
                     'compare' => '='
                 );
+            } else {
+                $meta_queries_exclude[] = array(
+                    'relation' => 'OR',
+                    array(
+                        'key' => 'customer_interesa',
+                        'compare' => 'NOT EXISTS'
+                    ),
+                    array(
+                        'key' => 'customer_interesa',
+                        'value' => '',
+                        'compare' => '='
+                    ),
+                    array(
+                        'key' => 'customer_interesa',
+                        'value' => '0',
+                        'compare' => '='
+                    )
+                );
             }
             if ($filter_en_espera) {
-                $meta_queries[] = array(
+                $meta_queries_include[] = array(
                     'key' => 'customer_en_espera',
                     'value' => '1',
                     'compare' => '='
                 );
+            } else {
+                $meta_queries_exclude[] = array(
+                    'relation' => 'OR',
+                    array(
+                        'key' => 'customer_en_espera',
+                        'compare' => 'NOT EXISTS'
+                    ),
+                    array(
+                        'key' => 'customer_en_espera',
+                        'value' => '',
+                        'compare' => '='
+                    ),
+                    array(
+                        'key' => 'customer_en_espera',
+                        'value' => '0',
+                        'compare' => '='
+                    )
+                );
             }
             if ($filter_no_interesa) {
-                $meta_queries[] = array(
+                $meta_queries_include[] = array(
                     'key' => 'customer_no_interesa',
                     'value' => '1',
                     'compare' => '='
                 );
+            } else {
+                $meta_queries_exclude[] = array(
+                    'relation' => 'OR',
+                    array(
+                        'key' => 'customer_no_interesa',
+                        'compare' => 'NOT EXISTS'
+                    ),
+                    array(
+                        'key' => 'customer_no_interesa',
+                        'value' => '',
+                        'compare' => '='
+                    ),
+                    array(
+                        'key' => 'customer_no_interesa',
+                        'value' => '0',
+                        'compare' => '='
+                    )
+                );
             }
             if ($filter_comercial) {
                 // Para comercial, incluir también los que no tienen el meta (NULL) ya que por defecto es true
-                // Usar una relación OR para incluir '1' o NULL/vacío
-                $meta_queries[] = array(
+                $meta_queries_include[] = array(
                     'relation' => 'OR',
                     array(
                         'key' => 'wcfm_is_comercial',
@@ -553,12 +774,18 @@ class WCFM_Affiliate_Vendor_Classification {
                         'value' => '',
                         'compare' => '='
                     )
+                );
+            } else {
+                // Excluir los comerciales: mostrar solo los que tienen '0'
+                $meta_queries_exclude[] = array(
+                    'key' => 'wcfm_is_comercial',
+                    'value' => '0',
+                    'compare' => '='
                 );
             }
             if ($filter_comercio) {
                 // Para comercio, incluir también los que no tienen el meta (NULL) ya que por defecto es true
-                // Usar una relación OR para incluir '1' o NULL/vacío
-                $meta_queries[] = array(
+                $meta_queries_include[] = array(
                     'relation' => 'OR',
                     array(
                         'key' => 'wcfm_is_comercio',
@@ -575,14 +802,45 @@ class WCFM_Affiliate_Vendor_Classification {
                         'compare' => '='
                     )
                 );
+            } else {
+                // Excluir los comercio: mostrar solo los que tienen '0'
+                $meta_queries_exclude[] = array(
+                    'key' => 'wcfm_is_comercio',
+                    'value' => '0',
+                    'compare' => '='
+                );
             }
             
-            // Si hay filtros, usar AND u OR según la selección
-            if (!empty($meta_queries)) {
-                if (count($meta_queries) > 1) {
-                    $meta_queries['relation'] = ($filter_logic === 'OR') ? 'OR' : 'AND';
+            // Combinar filtros de inclusión y exclusión
+            $all_meta_queries = array();
+            
+            // Primero los de inclusión (con AND/OR según filter_logic)
+            if (!empty($meta_queries_include)) {
+                if (count($meta_queries_include) > 1) {
+                    $include_group = $meta_queries_include;
+                    $include_group['relation'] = ($filter_logic === 'OR') ? 'OR' : 'AND';
+                    $all_meta_queries[] = $include_group;
+                } else {
+                    $all_meta_queries[] = $meta_queries_include[0];
                 }
-                $args['meta_query'] = $meta_queries;
+            }
+            
+            // Luego los de exclusión (siempre con AND)
+            if (!empty($meta_queries_exclude)) {
+                foreach ($meta_queries_exclude as $exclude_query) {
+                    $all_meta_queries[] = $exclude_query;
+                }
+            }
+            
+            // Aplicar todas las meta_queries con AND
+            if (!empty($all_meta_queries)) {
+                if (count($all_meta_queries) > 1) {
+                    $all_meta_queries['relation'] = 'AND';
+                }
+                $args['meta_query'] = $all_meta_queries;
+                error_log('🔍 WCFM Classification: Aplicando meta_query - Incluir: ' . count($meta_queries_include) . ', Excluir: ' . count($meta_queries_exclude) . ', Lógica: ' . $filter_logic);
+            } else {
+                error_log('🔍 WCFM Classification: NO hay meta_queries - Mostrando TODOS los vendedores');
             }
             
             
@@ -646,6 +904,10 @@ class WCFM_Affiliate_Vendor_Classification {
                 $crm_link = '';
             }
             
+            // Verificar si el usuario está activo
+            // Un usuario está activo si tiene roles asignados y no está deshabilitado
+            $is_active = !empty($customer->roles) && !get_user_meta($customer->ID, '_disable_vendor', true);
+            
             $customers_data[] = array(
                 'id' => $customer->ID,
                 'user_login' => $customer->user_login,
@@ -664,7 +926,8 @@ class WCFM_Affiliate_Vendor_Classification {
                 'comercial' => (bool) $comercial,
                 'registered' => $customer->user_registered,
                 'store_manager_url' => $store_manager_url,
-                'crm_link' => $crm_link
+                'crm_link' => $crm_link,
+                'is_active' => (bool) $is_active
             );
         }
         
@@ -854,7 +1117,4 @@ class WCFM_Affiliate_Vendor_Classification {
     }
     
 }
-
-// Inicializar
-new WCFM_Affiliate_Vendor_Classification();
 

@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name: WCFM Product Affiliate
+ * Plugin Name: CV Productos Afiliados
  * Plugin URI: https://ciudadvirtual.app
  * Description: Sistema de afiliación de productos para WCFM Marketplace. Permite a los vendedores vender productos de otros sin clonarlos, con comisiones duales y tracking de origen.
  * Version: 1.4.2
@@ -50,12 +50,15 @@ class WCFM_Product_Affiliate {
     public $tracking;
     public $link_tracking;
     public $bulk_manager;
+    public $vendor_classification;
     
     /**
      * Main Instance
      */
     public static function instance() {
+        error_log('📦 WCFM Product Affiliate: instance() called');
         if (is_null(self::$_instance)) {
+            error_log('📦 WCFM Product Affiliate: Creating new instance');
             self::$_instance = new self();
         }
         return self::$_instance;
@@ -65,6 +68,7 @@ class WCFM_Product_Affiliate {
      * Constructor
      */
     public function __construct() {
+        error_log('🏗️ WCFM Product Affiliate: Constructor called');
         $this->init_hooks();
     }
     
@@ -90,21 +94,27 @@ class WCFM_Product_Affiliate {
      * Check plugin dependencies
      */
     public function check_dependencies() {
+        error_log('🔍 WCFM Affiliate: Checking dependencies...');
+        
         if (!class_exists('WooCommerce')) {
+            error_log('❌ WCFM Affiliate: WooCommerce not found');
             add_action('admin_notices', array($this, 'woocommerce_missing_notice'));
             return false;
         }
         
         if (!class_exists('WCFM')) {
+            error_log('❌ WCFM Affiliate: WCFM not found');
             add_action('admin_notices', array($this, 'wcfm_missing_notice'));
             return false;
         }
         
         if (!class_exists('WCFMmp')) {
+            error_log('❌ WCFM Affiliate: WCFMmp not found');
             add_action('admin_notices', array($this, 'wcfmmp_missing_notice'));
             return false;
         }
         
+        error_log('✅ WCFM Affiliate: All dependencies found');
         return true;
     }
     
@@ -112,14 +122,19 @@ class WCFM_Product_Affiliate {
      * Initialize plugin
      */
     public function init() {
+        error_log('🚀 WCFM Affiliate: init() called');
+        
         if (!$this->check_dependencies()) {
+            error_log('❌ WCFM Affiliate: Dependencies check failed');
             return;
         }
         
+        error_log('✅ WCFM Affiliate: Dependencies check passed');
         $this->includes();
         $this->init_classes();
         
         do_action('wcfm_affiliate_loaded');
+        error_log('✅ WCFM Affiliate: Plugin initialized');
     }
     
     /**
@@ -138,13 +153,11 @@ class WCFM_Product_Affiliate {
             require_once WCFM_AFFILIATE_PLUGIN_DIR . 'includes/class-wcfm-affiliate-frontend.php';
         }
         
-        // Admin y AJAX
-        if (is_admin() || defined('DOING_AJAX')) {
-            error_log('WCFM Affiliate: Loading admin classes...');
-            require_once WCFM_AFFILIATE_PLUGIN_DIR . 'includes/class-wcfm-affiliate-bulk-manager.php';
-            require_once WCFM_AFFILIATE_PLUGIN_DIR . 'includes/class-wcfm-affiliate-vendor-classification.php';
-            error_log('WCFM Affiliate: Admin classes loaded (Bulk Manager, Vendor Classification)');
-        }
+        // Admin y AJAX - Cargar siempre para que estén disponibles cuando se necesiten
+        error_log('WCFM Affiliate: Loading admin classes...');
+        require_once WCFM_AFFILIATE_PLUGIN_DIR . 'includes/class-wcfm-affiliate-bulk-manager.php';
+        require_once WCFM_AFFILIATE_PLUGIN_DIR . 'includes/class-wcfm-affiliate-vendor-classification.php';
+        error_log('WCFM Affiliate: Admin classes loaded (Bulk Manager, Vendor Classification)');
         
         // Solo Admin (no AJAX)
         if (is_admin() && !defined('DOING_AJAX')) {
@@ -181,10 +194,20 @@ class WCFM_Product_Affiliate {
             $this->frontend = new WCFM_Affiliate_Frontend();
         }
         
-        if (is_admin() || defined('DOING_AJAX')) {
+        // Instanciar clases de admin - se registrarán en admin_menu que solo se ejecuta en admin
+        error_log('WCFM Affiliate: is_admin() = ' . (is_admin() ? 'true' : 'false') . ', DOING_AJAX = ' . (defined('DOING_AJAX') ? 'true' : 'false'));
+        
+        // Instanciar clases de admin siempre - el hook admin_menu solo se ejecuta en admin
+        if (!isset($this->bulk_manager)) {
             error_log('WCFM Affiliate: Instantiating Bulk Manager...');
             $this->bulk_manager = new WCFM_Affiliate_Bulk_Manager();
             error_log('WCFM Affiliate: Bulk Manager instantiated');
+        }
+        
+        if (!isset($this->vendor_classification)) {
+            error_log('WCFM Affiliate: Instantiating Vendor Classification...');
+            $this->vendor_classification = new WCFM_Affiliate_Vendor_Classification();
+            error_log('WCFM Affiliate: Vendor Classification instantiated');
         }
         
         if (is_admin() && !defined('DOING_AJAX')) {
@@ -310,9 +333,12 @@ class WCFM_Product_Affiliate {
  * Returns the main instance of WCFM_Product_Affiliate
  */
 function WCFM_Affiliate() {
+    error_log('🚀 WCFM_Affiliate() function called');
     return WCFM_Product_Affiliate::instance();
 }
 
 // Initialize the plugin
+error_log('📥 WCFM Product Affiliate: Plugin file loaded, initializing...');
 WCFM_Affiliate();
+error_log('📥 WCFM Product Affiliate: Plugin initialization complete');
 

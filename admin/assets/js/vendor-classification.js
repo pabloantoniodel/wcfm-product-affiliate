@@ -64,8 +64,9 @@
         
         /**
          * Cambio en filtros de checkboxes - Buscar inmediatamente
+         * Solo escuchar cambios en checkboxes dentro del contenedor de filtros
          */
-        $(document).on('change', '.filter-checkbox', function() {
+        $(document).on('change', '.classification-filters .filter-checkbox', function() {
             currentPage = 1;
             // Buscar inmediatamente sin debounce
             clearTimeout(searchTimeout);
@@ -74,12 +75,20 @@
         
         /**
          * Cambio en selector de orden - Buscar inmediatamente
+         * IMPORTANTE: El orden siempre se aplica con AND respecto a los filtros
          */
         $('#order-by').on('change', function() {
+            const newOrder = $(this).val();
+            console.log('🔄 Cambio de orden detectado:', newOrder);
             currentPage = 1;
             // Buscar inmediatamente sin debounce
             clearTimeout(searchTimeout);
-            loadCustomers();
+            // Aumentar delay para asegurar que el DOM esté completamente actualizado
+            // y que los filtros se lean correctamente
+            setTimeout(function() {
+                console.log('🔄 Ejecutando loadCustomers después de cambio de orden...');
+                loadCustomers();
+            }, 50);
         });
         
         /**
@@ -224,17 +233,59 @@
      */
     function loadCustomers() {
         const searchTerm = $('#customer-search').val().trim();
-        const filterRevisado = $('.filter-checkbox[value="revisado"]').is(':checked');
-        const filterContrato = $('.filter-checkbox[value="contrato"]').is(':checked');
-        const filterInteresa = $('.filter-checkbox[value="interesa"]').is(':checked');
-        const filterEnEspera = $('.filter-checkbox[value="en_espera"]').is(':checked');
-        const filterNoInteresa = $('.filter-checkbox[value="no_interesa"]').is(':checked');
-        const filterComercial = $('.filter-checkbox[value="comercial"]').is(':checked');
-        const filterComercio = $('.filter-checkbox[value="comercio"]').is(':checked');
+        // Leer filtros solo de los checkboxes de filtro (no de la tabla)
+        // Usar selector más específico para evitar conflictos con checkboxes de la tabla
+        // Asegurarse de leer desde el contenedor de filtros, no de la tabla
+        const $filterContainer = $('.classification-filters');
+        if ($filterContainer.length === 0) {
+            console.error('❌ No se encontró el contenedor de filtros');
+            return;
+        }
+        
+        // Leer el estado de cada checkbox directamente del DOM
+        // Usar prop('checked') en lugar de is(':checked') para mayor confiabilidad
+        const $checkboxRevisado = $filterContainer.find('input.filter-checkbox[value="revisado"]');
+        const $checkboxContrato = $filterContainer.find('input.filter-checkbox[value="contrato"]');
+        const $checkboxInteresa = $filterContainer.find('input.filter-checkbox[value="interesa"]');
+        const $checkboxEnEspera = $filterContainer.find('input.filter-checkbox[value="en_espera"]');
+        const $checkboxNoInteresa = $filterContainer.find('input.filter-checkbox[value="no_interesa"]');
+        const $checkboxComercial = $filterContainer.find('input.filter-checkbox[value="comercial"]');
+        const $checkboxComercio = $filterContainer.find('input.filter-checkbox[value="comercio"]');
+        
+        // Leer el estado checked usando prop() que es más confiable que is(':checked')
+        const filterRevisado = $checkboxRevisado.length > 0 ? ($checkboxRevisado.prop('checked') === true) : false;
+        const filterContrato = $checkboxContrato.length > 0 ? ($checkboxContrato.prop('checked') === true) : false;
+        const filterInteresa = $checkboxInteresa.length > 0 ? ($checkboxInteresa.prop('checked') === true) : false;
+        const filterEnEspera = $checkboxEnEspera.length > 0 ? ($checkboxEnEspera.prop('checked') === true) : false;
+        const filterNoInteresa = $checkboxNoInteresa.length > 0 ? ($checkboxNoInteresa.prop('checked') === true) : false;
+        const filterComercial = $checkboxComercial.length > 0 ? ($checkboxComercial.prop('checked') === true) : false;
+        const filterComercio = $checkboxComercio.length > 0 ? ($checkboxComercio.prop('checked') === true) : false;
         const filterLogic = $('input[name="filter-logic"]:checked').val() || 'AND';
         const orderBy = $('#order-by').val() || 'registered_desc';
         
+        // Debug: Verificar el estado del checkbox de revisado específicamente
+        if ($checkboxRevisado.length > 0) {
+            console.log('🔍 DEBUG Checkbox Revisado:', {
+                encontrado: true,
+                checked: $checkboxRevisado.is(':checked'),
+                prop_checked: $checkboxRevisado.prop('checked'),
+                attr_checked: $checkboxRevisado.attr('checked'),
+                valor: $checkboxRevisado.val()
+            });
+        } else {
+            console.warn('⚠️ Checkbox Revisado NO encontrado en el contenedor de filtros');
+        }
+        
         console.log('🔄 Cargando clientes - Búsqueda:', searchTerm || '(sin filtro)', '- Página:', currentPage, '- Orden:', orderBy, '- Lógica:', filterLogic);
+        console.log('🔍 Filtros activos (desde contenedor de filtros):', {
+            revisado: filterRevisado,
+            contrato: filterContrato,
+            interesa: filterInteresa,
+            en_espera: filterEnEspera,
+            no_interesa: filterNoInteresa,
+            comercial: filterComercial,
+            comercio: filterComercio
+        });
         
         const $customersList = $('#customers-list');
         const $pagination = $('#classification-pagination');
@@ -253,25 +304,30 @@
             </tr>
         `);
         
+        // Preparar datos para AJAX
+        const ajaxData = {
+            action: 'wcfm_search_customers_classification',
+            nonce: wcfmVendorClassification.nonce,
+            search: searchTerm,
+            page: currentPage,
+            order_by: orderBy,
+            filter_revisado: filterRevisado ? 'true' : 'false',
+            filter_contrato: filterContrato ? 'true' : 'false',
+            filter_interesa: filterInteresa ? 'true' : 'false',
+            filter_en_espera: filterEnEspera ? 'true' : 'false',
+            filter_no_interesa: filterNoInteresa ? 'true' : 'false',
+            filter_comercial: filterComercial ? 'true' : 'false',
+            filter_comercio: filterComercio ? 'true' : 'false',
+            filter_logic: filterLogic
+        };
+        
+        console.log('📤 Datos enviados al servidor:', ajaxData);
+        
         // AJAX
         $.ajax({
             url: wcfmVendorClassification.ajax_url,
             type: 'POST',
-            data: {
-                action: 'wcfm_search_customers_classification',
-                nonce: wcfmVendorClassification.nonce,
-                search: searchTerm,
-                page: currentPage,
-                order_by: orderBy,
-                filter_revisado: filterRevisado ? 'true' : 'false',
-                filter_contrato: filterContrato ? 'true' : 'false',
-                filter_interesa: filterInteresa ? 'true' : 'false',
-                filter_en_espera: filterEnEspera ? 'true' : 'false',
-                filter_no_interesa: filterNoInteresa ? 'true' : 'false',
-                filter_comercial: filterComercial ? 'true' : 'false',
-                filter_comercio: filterComercio ? 'true' : 'false',
-                filter_logic: filterLogic
-            },
+            data: ajaxData,
             success: function(response) {
                 console.log('✅ Clientes cargados:', response);
                 
@@ -368,66 +424,73 @@
                         </div>
                     </td>
                     <td class="revisado-column">
-                        <div class="classification-checkbox">
+                        <div class="classification-checkbox" title="${customer.is_active ? 'Cliente activo' : 'Cliente inactivo'}">
                             <input 
                                 type="checkbox" 
                                 class="revisado-checkbox" 
                                 ${customer.revisado ? 'checked' : ''}
                             >
+                            ${customer.is_active ? '<span style="color: #00a32a; font-size: 10px; margin-left: 3px;" title="Activo">●</span>' : '<span style="color: #dc3232; font-size: 10px; margin-left: 3px;" title="Inactivo">●</span>'}
                         </div>
                     </td>
                     <td class="contrato-column">
-                        <div class="classification-checkbox">
+                        <div class="classification-checkbox" title="${customer.is_active ? 'Cliente activo' : 'Cliente inactivo'}">
                             <input 
                                 type="checkbox" 
                                 class="contrato-checkbox" 
                                 ${customer.contrato ? 'checked' : ''}
                             >
+                            ${customer.is_active ? '<span style="color: #00a32a; font-size: 10px; margin-left: 3px;" title="Activo">●</span>' : '<span style="color: #dc3232; font-size: 10px; margin-left: 3px;" title="Inactivo">●</span>'}
                         </div>
                     </td>
                     <td class="interesa-column">
-                        <div class="classification-checkbox">
+                        <div class="classification-checkbox" title="${customer.is_active ? 'Cliente activo' : 'Cliente inactivo'}">
                             <input 
                                 type="checkbox" 
                                 class="interesa-checkbox" 
                                 ${customer.interesa ? 'checked' : ''}
                             >
+                            ${customer.is_active ? '<span style="color: #00a32a; font-size: 10px; margin-left: 3px;" title="Activo">●</span>' : '<span style="color: #dc3232; font-size: 10px; margin-left: 3px;" title="Inactivo">●</span>'}
                         </div>
                     </td>
                     <td class="en_espera-column">
-                        <div class="classification-checkbox">
+                        <div class="classification-checkbox" title="${customer.is_active ? 'Cliente activo' : 'Cliente inactivo'}">
                             <input 
                                 type="checkbox" 
                                 class="en_espera-checkbox" 
                                 ${customer.en_espera ? 'checked' : ''}
                             >
+                            ${customer.is_active ? '<span style="color: #00a32a; font-size: 10px; margin-left: 3px;" title="Activo">●</span>' : '<span style="color: #dc3232; font-size: 10px; margin-left: 3px;" title="Inactivo">●</span>'}
                         </div>
                     </td>
                     <td class="no_interesa-column">
-                        <div class="classification-checkbox">
+                        <div class="classification-checkbox" title="${customer.is_active ? 'Cliente activo' : 'Cliente inactivo'}">
                             <input 
                                 type="checkbox" 
                                 class="no_interesa-checkbox" 
                                 ${customer.no_interesa ? 'checked' : ''}
                             >
+                            ${customer.is_active ? '<span style="color: #00a32a; font-size: 10px; margin-left: 3px;" title="Activo">●</span>' : '<span style="color: #dc3232; font-size: 10px; margin-left: 3px;" title="Inactivo">●</span>'}
                         </div>
                     </td>
                     <td class="comercio-column">
-                        <div class="classification-checkbox">
+                        <div class="classification-checkbox" title="${customer.is_active ? 'Cliente activo' : 'Cliente inactivo'}">
                             <input 
                                 type="checkbox" 
                                 class="comercio-checkbox" 
                                 ${customer.comercio ? 'checked' : ''}
                             >
+                            ${customer.is_active ? '<span style="color: #00a32a; font-size: 10px; margin-left: 3px;" title="Activo">●</span>' : '<span style="color: #dc3232; font-size: 10px; margin-left: 3px;" title="Inactivo">●</span>'}
                         </div>
                     </td>
                     <td class="comercial-column">
-                        <div class="classification-checkbox">
+                        <div class="classification-checkbox" title="${customer.is_active ? 'Cliente activo' : 'Cliente inactivo'}">
                             <input 
                                 type="checkbox" 
                                 class="comercial-checkbox" 
                                 ${customer.comercial ? 'checked' : ''}
                             >
+                            ${customer.is_active ? '<span style="color: #00a32a; font-size: 10px; margin-left: 3px;" title="Activo">●</span>' : '<span style="color: #dc3232; font-size: 10px; margin-left: 3px;" title="Inactivo">●</span>'}
                         </div>
                     </td>
                     <td class="actions-column">
@@ -440,7 +503,7 @@
                                 <i class="fas fa-store"></i>
                                 Tienda
                             </a>
-                            <button type="button" class="button button-small crm-link-btn" data-customer-id="${customer.id}" data-crm-link="${escapeHtml(customer.crm_link || '')}" title="Link a CRM">
+                            <button type="button" class="button button-small crm-link-btn ${(customer.crm_link && customer.crm_link.trim() !== '') ? 'crm-link-btn-has-link' : 'crm-link-btn-no-link'}" data-customer-id="${customer.id}" data-crm-link="${escapeHtml(customer.crm_link || '')}" title="Link a CRM">
                                 <i class="fas fa-external-link-alt"></i>
                                 CRM
                             </button>
@@ -824,6 +887,13 @@
                         // Actualizar botón
                         const $btn = $(`.crm-link-btn[data-customer-id="${modalCustomerId}"]`);
                         $btn.data('crm-link', newLink);
+                        
+                        // Actualizar clase del botón según si tiene link o no
+                        if (newLink && newLink.trim() !== '') {
+                            $btn.removeClass('crm-link-btn-no-link').addClass('crm-link-btn-has-link');
+                        } else {
+                            $btn.removeClass('crm-link-btn-has-link').addClass('crm-link-btn-no-link');
+                        }
                         
                         // Cerrar modal
                         $('#crm-link-modal').fadeOut(200);

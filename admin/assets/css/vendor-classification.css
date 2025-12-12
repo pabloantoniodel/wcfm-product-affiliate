@@ -368,18 +368,39 @@
     padding: 4px 8px;
     font-size: 11px;
     text-decoration: none;
-    background: #00a32a;
-    color: white;
-    border: 1px solid #00a32a;
     border-radius: 3px;
     transition: all 0.2s ease;
     cursor: pointer;
 }
 
-.crm-link-btn:hover {
-    background: #008a20;
-    border-color: #008a20;
-    color: white;
+/* Botón sin link (gris) - Por defecto */
+.crm-link-btn.crm-link-btn-no-link,
+.crm-link-btn-no-link {
+    background: #6c757d !important;
+    color: white !important;
+    border: 1px solid #6c757d !important;
+}
+
+.crm-link-btn.crm-link-btn-no-link:hover,
+.crm-link-btn-no-link:hover {
+    background: #5a6268 !important;
+    border-color: #5a6268 !important;
+    color: white !important;
+}
+
+/* Botón con link (verde) */
+.crm-link-btn.crm-link-btn-has-link,
+.crm-link-btn-has-link {
+    background: #00a32a !important;
+    color: white !important;
+    border: 1px solid #00a32a !important;
+}
+
+.crm-link-btn.crm-link-btn-has-link:hover,
+.crm-link-btn-has-link:hover {
+    background: #008a20 !important;
+    border-color: #008a20 !important;
+    color: white !important;
 }
 
 .crm-link-btn i {
