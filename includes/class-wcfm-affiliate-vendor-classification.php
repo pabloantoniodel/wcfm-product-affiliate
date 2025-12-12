@@ -36,6 +36,21 @@ class WCFM_Affiliate_Vendor_Classification {
         add_action('wp_ajax_wcfm_get_customer_crm_link', array($this, 'ajax_get_customer_crm_link'));
         add_action('wp_ajax_wcfm_update_customer_crm_link', array($this, 'ajax_update_customer_crm_link'));
     }
+
+    /**
+     * Validar permisos y nonce para endpoints AJAX de administración.
+     */
+    private function require_ajax_permissions() {
+        // Solo administradores / gestores con permisos WooCommerce
+        if (!current_user_can('manage_woocommerce')) {
+            wp_send_json_error(array('message' => 'No autorizado'), 403);
+        }
+
+        $nonce = isset($_POST['nonce']) ? sanitize_text_field(wp_unslash($_POST['nonce'])) : '';
+        if (empty($nonce) || !wp_verify_nonce($nonce, 'wcfm_vendor_classification_nonce')) {
+            wp_send_json_error(array('message' => 'Nonce inválido'), 403);
+        }
+    }
     
     /**
      * Añadir menú de administración
@@ -296,6 +311,7 @@ class WCFM_Affiliate_Vendor_Classification {
      * AJAX: Buscar clientes
      */
     public function ajax_search_customers() {
+        $this->require_ajax_permissions();
         error_log('🔍 WCFM Customer Classification AJAX: Búsqueda iniciada');
         
         $search = isset($_POST['search']) ? sanitize_text_field($_POST['search']) : '';
@@ -969,6 +985,7 @@ class WCFM_Affiliate_Vendor_Classification {
      * AJAX: Actualizar clasificación de cliente
      */
     public function ajax_update_classification() {
+        $this->require_ajax_permissions();
         error_log('💾 WCFM Customer Classification AJAX: Actualización iniciada');
         
         $customer_id = isset($_POST['customer_id']) ? intval($_POST['customer_id']) : 0;
@@ -1026,6 +1043,7 @@ class WCFM_Affiliate_Vendor_Classification {
      * AJAX: Actualizar código ciudad virtual
      */
     public function ajax_update_customer_code() {
+        $this->require_ajax_permissions();
         $customer_id = isset($_POST['customer_id']) ? intval($_POST['customer_id']) : 0;
         $code = isset($_POST['code']) ? sanitize_text_field(wp_unslash($_POST['code'])) : '';
         
@@ -1050,6 +1068,7 @@ class WCFM_Affiliate_Vendor_Classification {
      * AJAX: Actualizar clasificación CV
      */
     public function ajax_update_customer_cv_classification() {
+        $this->require_ajax_permissions();
         $customer_id = isset($_POST['customer_id']) ? intval($_POST['customer_id']) : 0;
         $cv_classification = isset($_POST['cv_classification']) ? sanitize_text_field(wp_unslash($_POST['cv_classification'])) : '';
         
@@ -1074,6 +1093,7 @@ class WCFM_Affiliate_Vendor_Classification {
      * AJAX: Obtener link CRM del cliente
      */
     public function ajax_get_customer_crm_link() {
+        $this->require_ajax_permissions();
         $customer_id = isset($_POST['customer_id']) ? intval($_POST['customer_id']) : 0;
         
         if (!$customer_id) {
@@ -1096,6 +1116,7 @@ class WCFM_Affiliate_Vendor_Classification {
      * AJAX: Actualizar link CRM del cliente
      */
     public function ajax_update_customer_crm_link() {
+        $this->require_ajax_permissions();
         $customer_id = isset($_POST['customer_id']) ? intval($_POST['customer_id']) : 0;
         $crm_link = isset($_POST['crm_link']) ? esc_url_raw(wp_unslash($_POST['crm_link'])) : '';
         
