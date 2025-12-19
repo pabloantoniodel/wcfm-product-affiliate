@@ -13,6 +13,9 @@ jQuery(document).ready(function($) {
     var allSearchProductIds = []; // Array global con todos los IDs de productos encontrados en la búsqueda (todas las páginas)
     var allPoolProductIds = []; // Array global con todos los IDs de productos del pool
     var allSearchSelected = false; // Flag para indicar si todos los productos de búsqueda están seleccionados
+    var allVendorIds = []; // Array global con todos los IDs de vendedores encontrados (todas las páginas)
+    var allVendorsSelected = false; // Flag para indicar si todos los vendedores están seleccionados
+    var allVendorData = {}; // Objeto global con datos de vendedores: {id: {name, email, ...}}
     
     // Marcar "Seleccionar Todos" si todos están marcados al cargar
     function updateSelectAllCheckbox() {
@@ -423,6 +426,10 @@ jQuery(document).ready(function($) {
     });
     
     function openVendorModal() {
+        // Resetear arrays y flags al abrir el modal
+        allVendorIds = [];
+        allVendorsSelected = false;
+        allVendorData = {};
         $('#vendor-select-modal').fadeIn(300);
         searchVendors('', 1);
     }
@@ -432,12 +439,20 @@ jQuery(document).ready(function($) {
     // ==========================================
     
     $('#search-vendors-btn').on('click', function() {
+        // Resetear arrays y flags al hacer nueva búsqueda
+        allVendorIds = [];
+        allVendorsSelected = false;
+        allVendorData = {};
         var search = $('#vendor-search').val();
         searchVendors(search, 1);
     });
     
     $('#vendor-search').on('keypress', function(e) {
         if (e.which === 13) {
+            // Resetear arrays y flags al hacer nueva búsqueda
+            allVendorIds = [];
+            allVendorsSelected = false;
+            allVendorData = {};
             var search = $(this).val();
             searchVendors(search, 1);
         }
@@ -449,6 +464,11 @@ jQuery(document).ready(function($) {
         var filterComercial = $('#filter-comercial').is(':checked');
         
         console.log('🔄 Filtro cambiado - Comercio:', filterComercio, '- Comercial:', filterComercial);
+        
+        // Resetear arrays y flags al cambiar filtros (nueva búsqueda)
+        allVendorIds = [];
+        allVendorsSelected = false;
+        allVendorData = {};
         
         // Buscar automáticamente con los nuevos filtros
         var search = $('#vendor-search').val();
@@ -493,12 +513,37 @@ jQuery(document).ready(function($) {
         var $tbody = $('#vendors-list-body');
         $tbody.empty();
         
+        // Si es la primera página o se reinició la búsqueda, limpiar el array global y el flag
+        if (data.current_page === 1) {
+            allVendorIds = [];
+            allVendorsSelected = false;
+            allVendorData = {};
+        }
+        
         if (data.vendors.length === 0) {
             $tbody.append('<tr><td colspan="5" style="text-align:center;">No se encontraron vendedores</td></tr>');
         } else {
             data.vendors.forEach(function(vendor) {
+                // Añadir ID al array global si no existe
+                var vendorIdStr = vendor.id.toString();
+                if (allVendorIds.indexOf(vendorIdStr) === -1) {
+                    allVendorIds.push(vendorIdStr);
+                }
+                
+                // Guardar datos del vendedor
+                allVendorData[vendorIdStr] = {
+                    id: vendor.id,
+                    name: vendor.name,
+                    email: vendor.email,
+                    products: vendor.products,
+                    registered: vendor.registered
+                };
+                
                 var $row = $('<tr>');
-                $row.append('<td class="check-column"><input type="checkbox" class="vendor-checkbox" value="' + vendor.id + '" data-vendor-name="' + vendor.name + '" /></td>');
+                // Si "todos (todas las páginas)" está marcado, marcar este checkbox
+                var isChecked = allVendorsSelected;
+                
+                $row.append('<td class="check-column"><input type="checkbox" class="vendor-checkbox" value="' + vendor.id + '" data-vendor-name="' + vendor.name + '" ' + (isChecked ? 'checked' : '') + ' /></td>');
                 $row.append('<td><strong>' + vendor.name + '</strong></td>');
                 $row.append('<td>' + vendor.email + '</td>');
                 $row.append('<td>' + vendor.products + '</td>');
@@ -507,8 +552,34 @@ jQuery(document).ready(function($) {
             });
         }
         
+        // Actualizar checkbox "todos" de vendedores
+        updateVendorSelectAllCheckbox();
+        
         // Paginación
         displayPagination(data);
+    }
+    
+    // Actualizar checkbox "Seleccionar todos (todas las páginas)" de vendedores
+    function updateVendorSelectAllCheckbox() {
+        // Si el flag global está activo, el checkbox "todos" debe estar marcado
+        if (allVendorsSelected) {
+            $('#select-all-vendors-all-pages').prop('checked', true);
+        } else {
+            // Verificar si todos los checkboxes visibles están marcados
+            var allChecked = allVendorIds.length > 0 && 
+                allVendorIds.every(function(id) {
+                    var $checkbox = $('.vendor-checkbox[value="' + id + '"]');
+                    // Si el checkbox existe en el DOM, verificar su estado
+                    // Si no existe, asumir que está desmarcado (no está en la página actual)
+                    return $checkbox.length === 0 || $checkbox.is(':checked');
+                });
+            $('#select-all-vendors-all-pages').prop('checked', allChecked);
+        }
+        
+        // Actualizar checkbox de página actual
+        var currentPageChecked = $('.vendor-checkbox').length > 0 && 
+            $('.vendor-checkbox').length === $('.vendor-checkbox:checked').length;
+        $('#select-all-vendors').prop('checked', currentPageChecked);
     }
     
     function displayPagination(data) {
@@ -538,8 +609,30 @@ jQuery(document).ready(function($) {
     // SELECCIONAR TODOS VENDEDORES
     // ==========================================
     
+    // Seleccionar todos de la página actual
     $('#select-all-vendors').on('change', function() {
         $('.vendor-checkbox').prop('checked', $(this).is(':checked'));
+        updateVendorSelectAllCheckbox();
+    });
+    
+    // Seleccionar todos de todas las páginas
+    $('#select-all-vendors-all-pages').on('change', function() {
+        var isChecked = $(this).is(':checked');
+        allVendorsSelected = isChecked;
+        
+        // Marcar/desmarcar todos los checkboxes visibles
+        $('.vendor-checkbox').prop('checked', isChecked);
+        
+        updateVendorSelectAllCheckbox();
+    });
+    
+    // Actualizar checkbox "todos" cuando se cambie un checkbox individual
+    $(document).on('change', '.vendor-checkbox', function() {
+        // Si se desmarca un checkbox individual, desactivar el flag "todos"
+        if (!$(this).is(':checked')) {
+            allVendorsSelected = false;
+        }
+        updateVendorSelectAllCheckbox();
     });
     
     // ==========================================
@@ -550,10 +643,30 @@ jQuery(document).ready(function($) {
         var selectedVendorIds = [];
         var selectedVendorNames = [];
         
-        $('.vendor-checkbox:checked').each(function() {
-            selectedVendorIds.push($(this).val());
-            selectedVendorNames.push($(this).data('vendor-name'));
-        });
+        // Si el checkbox "todos (todas las páginas)" está marcado o el flag está activo, usar todos los IDs
+        if ($('#select-all-vendors-all-pages').is(':checked') || allVendorsSelected) {
+            // Usar todos los IDs del array global y obtener nombres desde allVendorData
+            allVendorIds.forEach(function(vendorId) {
+                selectedVendorIds.push(vendorId);
+                if (allVendorData[vendorId] && allVendorData[vendorId].name) {
+                    selectedVendorNames.push(allVendorData[vendorId].name);
+                } else {
+                    // Fallback: buscar en el DOM o usar ID
+                    var $checkbox = $('.vendor-checkbox[value="' + vendorId + '"]');
+                    if ($checkbox.length > 0) {
+                        selectedVendorNames.push($checkbox.data('vendor-name') || 'Vendedor #' + vendorId);
+                    } else {
+                        selectedVendorNames.push('Vendedor #' + vendorId);
+                    }
+                }
+            });
+        } else {
+            // Solo los de la página actual
+            $('.vendor-checkbox:checked').each(function() {
+                selectedVendorIds.push($(this).val());
+                selectedVendorNames.push($(this).data('vendor-name'));
+            });
+        }
         
         if (selectedVendorIds.length === 0) {
             alert('Por favor selecciona al menos un vendedor');
@@ -561,8 +674,12 @@ jQuery(document).ready(function($) {
         }
         
         // Confirmar afiliación múltiple
-        var confirm_msg = '¿Afiliar ' + selectedProducts.length + ' producto(s) a ' + selectedVendorIds.length + ' vendedor(es)?\\n\\n';
-        confirm_msg += 'Vendedores: ' + selectedVendorNames.join(', ');
+        var confirm_msg = '¿Afiliar ' + selectedProducts.length + ' producto(s) a ' + selectedVendorIds.length + ' vendedor(es)?';
+        if (selectedVendorNames.length <= 10) {
+            confirm_msg += '\\n\\nVendedores: ' + selectedVendorNames.join(', ');
+        } else {
+            confirm_msg += '\\n\\nVendedores: ' + selectedVendorNames.slice(0, 10).join(', ') + ' y ' + (selectedVendorNames.length - 10) + ' más...';
+        }
         
         if (!confirm(confirm_msg)) {
             return;

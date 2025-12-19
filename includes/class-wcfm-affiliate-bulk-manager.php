@@ -248,7 +248,12 @@ class WCFM_Affiliate_Bulk_Manager {
                         <table class="wp-list-table widefat fixed striped">
                             <thead>
                                 <tr>
-                                    <th class="check-column"><input type="checkbox" id="select-all-vendors" /></th>
+                                    <th class="check-column">
+                                        <input type="checkbox" id="select-all-vendors" title="<?php _e('Seleccionar todos (página actual)', 'wcfm-product-affiliate'); ?>" />
+                                        <br>
+                                        <input type="checkbox" id="select-all-vendors-all-pages" title="<?php _e('Seleccionar todos (todas las páginas)', 'wcfm-product-affiliate'); ?>" style="margin-top: 5px;" />
+                                        <small style="display: block; font-size: 10px; margin-top: 2px; color: #666;"><?php _e('Todas', 'wcfm-product-affiliate'); ?></small>
+                                    </th>
                                     <th><?php _e('Vendedor', 'wcfm-product-affiliate'); ?></th>
                                     <th><?php _e('Email', 'wcfm-product-affiliate'); ?></th>
                                     <th><?php _e('Productos', 'wcfm-product-affiliate'); ?></th>
