@@ -78,6 +78,37 @@
     height: auto;
 }
 
+/* Estilos para checkboxes "Seleccionar todos" */
+.check-column {
+    position: relative;
+    width: 60px;
+    text-align: center;
+}
+
+.check-column input[type="checkbox"] {
+    margin: 0 auto;
+    cursor: pointer;
+}
+
+.check-column input[type="checkbox"][id*="-all"] {
+    margin-top: 5px;
+    border: 2px solid #667eea;
+}
+
+.check-column input[type="checkbox"][id*="-all"]:checked {
+    background-color: #667eea;
+    border-color: #667eea;
+}
+
+.check-column small {
+    display: block;
+    font-size: 10px;
+    margin-top: 2px;
+    color: #666;
+    font-weight: normal;
+    line-height: 1.2;
+}
+
 .in-stock {
     color: #46b450;
     font-weight: bold;

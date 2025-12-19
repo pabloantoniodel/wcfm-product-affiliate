@@ -10,16 +10,38 @@ jQuery(document).ready(function($) {
     
     var selectedVendor = null;
     var selectedProducts = [];
+    var allSearchProductIds = []; // Array global con todos los IDs de productos encontrados en la búsqueda (todas las páginas)
+    var allPoolProductIds = []; // Array global con todos los IDs de productos del pool
+    var allSearchSelected = false; // Flag para indicar si todos los productos de búsqueda están seleccionados
     
     // Marcar "Seleccionar Todos" si todos están marcados al cargar
     function updateSelectAllCheckbox() {
         var totalCheckboxes = $('.product-checkbox').length;
         var checkedCheckboxes = $('.product-checkbox:checked').length;
         $('#select-all-products').prop('checked', totalCheckboxes > 0 && totalCheckboxes === checkedCheckboxes);
+        
+        // Actualizar checkbox "todos" del pool
+        var allPoolChecked = allPoolProductIds.length > 0 && 
+            allPoolProductIds.every(function(id) {
+                return $('.product-checkbox[value="' + id + '"]').is(':checked');
+            });
+        $('#select-all-products-all').prop('checked', allPoolChecked);
+    }
+    
+    // Inicializar array de productos del pool al cargar
+    function initPoolProductIds() {
+        allPoolProductIds = [];
+        $('.product-checkbox').each(function() {
+            var id = $(this).val();
+            if (allPoolProductIds.indexOf(id) === -1) {
+                allPoolProductIds.push(id);
+            }
+        });
     }
     
     // Ejecutar al cargar
     updateSelectAllCheckbox();
+    initPoolProductIds();
     
     // ==========================================
     // BÚSQUEDA DE PRODUCTOS
@@ -87,12 +109,27 @@ jQuery(document).ready(function($) {
         // Actualizar contador
         $('#search-results-count').text('(' + data.total + ' encontrados)');
         
+        // Si es la primera página o se reinició la búsqueda, limpiar el array global y el flag
+        if (data.current_page === 1) {
+            allSearchProductIds = [];
+            allSearchSelected = false;
+        }
+        
         if (products.length === 0) {
             $tbody.append('<tr><td colspan="6" style="text-align:center;">No se encontraron productos</td></tr>');
         } else {
             products.forEach(function(product) {
+                // Añadir ID al array global si no existe
+                var productIdStr = product.id.toString();
+                if (allSearchProductIds.indexOf(productIdStr) === -1) {
+                    allSearchProductIds.push(productIdStr);
+                }
+                
                 var $row = $('<tr>');
-                $row.append('<td><input type="checkbox" class="search-product-checkbox" value="' + product.id + '" /></td>');
+                // Si "todos (todas las páginas)" está marcado, marcar este checkbox
+                var isChecked = allSearchSelected;
+                
+                $row.append('<td><input type="checkbox" class="search-product-checkbox" value="' + product.id + '" ' + (isChecked ? 'checked' : '') + ' /></td>');
                 $row.append('<td>' + product.image + '</td>');
                 $row.append('<td>' + product.name + '</td>');
                 $row.append('<td>' + product.vendor + '</td>');
@@ -102,10 +139,36 @@ jQuery(document).ready(function($) {
             });
         }
         
+        // Actualizar checkbox "todos" de búsqueda
+        updateSearchSelectAllCheckbox();
+        
         // Mostrar paginación
         displaySearchPagination(data);
         
         $('#search-results').show();
+    }
+    
+    // Actualizar checkbox "Seleccionar todos (todas las páginas)" de búsqueda
+    function updateSearchSelectAllCheckbox() {
+        // Si el flag global está activo, el checkbox "todos" debe estar marcado
+        if (allSearchSelected) {
+            $('#select-all-search-all-pages').prop('checked', true);
+        } else {
+            // Verificar si todos los checkboxes visibles están marcados
+            var allChecked = allSearchProductIds.length > 0 && 
+                allSearchProductIds.every(function(id) {
+                    var $checkbox = $('.search-product-checkbox[value="' + id + '"]');
+                    // Si el checkbox existe en el DOM, verificar su estado
+                    // Si no existe, asumir que está desmarcado (no está en la página actual)
+                    return $checkbox.length === 0 || $checkbox.is(':checked');
+                });
+            $('#select-all-search-all-pages').prop('checked', allChecked);
+        }
+        
+        // Actualizar checkbox de página actual
+        var currentPageChecked = $('.search-product-checkbox').length > 0 && 
+            $('.search-product-checkbox').length === $('.search-product-checkbox:checked').length;
+        $('#select-all-search').prop('checked', currentPageChecked);
     }
     
     function displaySearchPagination(data) {
@@ -134,8 +197,30 @@ jQuery(document).ready(function($) {
     // SELECCIONAR TODOS EN BÚSQUEDA
     // ==========================================
     
+    // Seleccionar todos de la página actual
     $('#select-all-search').on('change', function() {
         $('.search-product-checkbox').prop('checked', $(this).is(':checked'));
+        updateSearchSelectAllCheckbox();
+    });
+    
+    // Seleccionar todos de todas las páginas
+    $('#select-all-search-all-pages').on('change', function() {
+        var isChecked = $(this).is(':checked');
+        allSearchSelected = isChecked;
+        
+        // Marcar/desmarcar todos los checkboxes visibles
+        $('.search-product-checkbox').prop('checked', isChecked);
+        
+        updateSearchSelectAllCheckbox();
+    });
+    
+    // Actualizar checkbox "todos" cuando se cambie un checkbox individual
+    $(document).on('change', '.search-product-checkbox', function() {
+        // Si se desmarca un checkbox individual, desactivar el flag "todos"
+        if (!$(this).is(':checked')) {
+            allSearchSelected = false;
+        }
+        updateSearchSelectAllCheckbox();
     });
     
     // ==========================================
@@ -144,9 +229,16 @@ jQuery(document).ready(function($) {
     
     $('#add-selected-search-btn').on('click', function() {
         var productIds = [];
-        $('.search-product-checkbox:checked').each(function() {
-            productIds.push($(this).val());
-        });
+        
+        // Si el checkbox "todos (todas las páginas)" está marcado o el flag está activo, usar todos los IDs
+        if ($('#select-all-search-all-pages').is(':checked') || allSearchSelected) {
+            productIds = allSearchProductIds.slice(); // Copiar array
+        } else {
+            // Solo los de la página actual
+            $('.search-product-checkbox:checked').each(function() {
+                productIds.push($(this).val());
+            });
+        }
         
         if (productIds.length === 0) {
             alert('Por favor selecciona al menos un producto');
@@ -219,8 +311,25 @@ jQuery(document).ready(function($) {
     // SELECCIONAR TODOS
     // ==========================================
     
+    // Seleccionar todos de la página actual del pool
     $('#select-all-products').on('change', function() {
         $('.product-checkbox').prop('checked', $(this).is(':checked'));
+        updateSelectAllCheckbox();
+    });
+    
+    // Seleccionar todos los productos del pool (independientemente de si están visibles)
+    $('#select-all-products-all').on('change', function() {
+        var isChecked = $(this).is(':checked');
+        
+        // Actualizar array global primero
+        initPoolProductIds();
+        
+        // Marcar/desmarcar todos los checkboxes visibles
+        $('.product-checkbox').prop('checked', isChecked);
+        
+        // Si hay productos del pool que no están visibles (por ejemplo, si hubiera paginación en el futuro),
+        // se marcarían aquí. Por ahora, todos están visibles.
+        updateSelectAllCheckbox();
     });
     
     // Actualizar "Seleccionar Todos" cuando se marque/desmarque un checkbox individual
@@ -234,9 +343,17 @@ jQuery(document).ready(function($) {
     
     $('#delete-selected-btn').on('click', function() {
         var productIds = [];
-        $('.product-checkbox:checked').each(function() {
-            productIds.push($(this).val());
-        });
+        
+        // Si el checkbox "todos" está marcado, usar todos los IDs del pool
+        if ($('#select-all-products-all').is(':checked')) {
+            initPoolProductIds();
+            productIds = allPoolProductIds.slice(); // Copiar array
+        } else {
+            // Solo los marcados visibles
+            $('.product-checkbox:checked').each(function() {
+                productIds.push($(this).val());
+            });
+        }
         
         if (productIds.length === 0) {
             alert(wcfmAffiliateBulk.i18n.selectProducts);
@@ -268,6 +385,8 @@ jQuery(document).ready(function($) {
             },
             success: function(response) {
                 if (response.success) {
+                    // Actualizar array del pool después de eliminar
+                    initPoolProductIds();
                     location.reload();
                 } else {
                     alert(response.data.message || wcfmAffiliateBulk.i18n.error);
@@ -282,9 +401,17 @@ jQuery(document).ready(function($) {
     
     $('#send-to-vendor-btn').on('click', function() {
         selectedProducts = [];
-        $('.product-checkbox:checked').each(function() {
-            selectedProducts.push($(this).val());
-        });
+        
+        // Si el checkbox "todos" está marcado, usar todos los IDs del pool
+        if ($('#select-all-products-all').is(':checked')) {
+            initPoolProductIds();
+            selectedProducts = allPoolProductIds.slice(); // Copiar array
+        } else {
+            // Solo los marcados visibles
+            $('.product-checkbox:checked').each(function() {
+                selectedProducts.push($(this).val());
+            });
+        }
         
         if (selectedProducts.length === 0) {
             alert(wcfmAffiliateBulk.i18n.selectProducts);
