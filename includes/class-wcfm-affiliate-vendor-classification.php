@@ -340,6 +340,10 @@ class WCFM_Affiliate_Vendor_Classification {
         $filter_comercio = ($filter_comercio_raw === 'true');
         
         error_log('🔍 WCFM Classification: Buscando clientes - Search: "' . $search . '" - Página: ' . $page . ' - Orden: ' . $order_by);
+        // Log específico para debugging del usuario latendetadelbotanic
+        if (stripos($search, 'latendetadelbotanic') !== false) {
+            error_log('🔍 DEBUG latendetadelbotanic: Búsqueda detectada - Search: "' . $search . '"');
+        }
         error_log('🔍 WCFM Classification: Valores RAW recibidos - revisado: "' . $filter_revisado_raw . '" (tipo: ' . gettype($filter_revisado_raw) . ')' . 
                   ', contrato: "' . $filter_contrato_raw . '"' . 
                   ', interesa: "' . $filter_interesa_raw . '"' . 
@@ -596,6 +600,17 @@ class WCFM_Affiliate_Vendor_Classification {
             }
             
             error_log('🔍 WCFM Classification: Búsqueda personalizada - Encontrados ' . count($customers) . ' clientes (Total: ' . $total . ')');
+            // Log específico para debugging del usuario latendetadelbotanic
+            if (stripos($search, 'latendetadelbotanic') !== false) {
+                $user_ids_found = $wpdb->get_col($user_ids_query);
+                error_log('🔍 DEBUG latendetadelbotanic: User IDs encontrados en query: ' . print_r($user_ids_found, true));
+                error_log('🔍 DEBUG latendetadelbotanic: Total: ' . $total . ', Customers count: ' . count($customers));
+                if (in_array(16, $user_ids_found)) {
+                    error_log('🔍 DEBUG latendetadelbotanic: ✅ Usuario ID 16 encontrado en user_ids_query');
+                } else {
+                    error_log('🔍 DEBUG latendetadelbotanic: ❌ Usuario ID 16 NO encontrado en user_ids_query');
+                }
+            }
         } else {
             // Sin búsqueda de texto, usar WP_User_Query normal
             // IMPORTANTE: El orden siempre se aplica, y los filtros de checkboxes se combinan con AND u OR según filter_logic
