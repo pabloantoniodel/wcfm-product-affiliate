@@ -453,7 +453,7 @@ class WCFM_Affiliate_Vendor_Classification {
                 $filter_conditions_exclude[] = "(um_comercio.meta_value = '0')";
             }
             
-            // Combinar condiciones: primero las de inclusión (con AND/OR según filter_logic), luego las de exclusión (siempre con AND)
+            // Combinar condiciones: primero las de inclusión (con AND/OR según filter_logic), luego las de exclusión
             $all_conditions = array();
             if (!empty($filter_conditions_include)) {
                 $include_operator = ($filter_logic === 'OR') ? ' OR ' : ' AND ';
@@ -463,10 +463,25 @@ class WCFM_Affiliate_Vendor_Classification {
                     $all_conditions[] = $filter_conditions_include[0];
                 }
             }
+            
+            // IMPORTANTE: Si filter_logic es OR y hay inclusiones, las exclusiones NO deben bloquear
+            // a usuarios que cumplan al menos una inclusión. 
+            // Con OR: si el usuario cumple alguna inclusión, aparece (las exclusiones no importan)
+            // Si no cumple ninguna inclusión, debe cumplir todas las exclusiones para aparecer
+            // Lógica: (inclusión1 OR inclusión2 OR ...) OR ((NOT inclusión1 AND NOT inclusión2 AND ...) AND exclusiones)
+            // Simplificado para practicidad: Con OR e inclusiones, ignorar exclusiones completamente
+            // Esto es lo que el usuario espera: si "Comercio" está marcado con OR, aparece aunque otros estén desmarcados
             if (!empty($filter_conditions_exclude)) {
-                // Las exclusiones siempre se aplican con AND
-                foreach ($filter_conditions_exclude as $exclude_condition) {
-                    $all_conditions[] = $exclude_condition;
+                if ($filter_logic === 'OR' && !empty($filter_conditions_include)) {
+                    // Con OR y inclusiones: NO aplicar exclusiones
+                    // El usuario aparece si cumple alguna inclusión, independientemente de exclusiones
+                    // Esto permite que si "Comercio" está marcado, el usuario aparezca aunque tenga "En Espera" = '1'
+                    error_log('🔍 WCFM Classification: OR con inclusiones - Ignorando exclusiones para permitir usuarios que cumplan alguna inclusión');
+                } else {
+                    // Con AND o sin inclusiones: aplicar todas las exclusiones con AND (restrictivo)
+                    foreach ($filter_conditions_exclude as $exclude_condition) {
+                        $all_conditions[] = $exclude_condition;
+                    }
                 }
             }
             
@@ -870,10 +885,19 @@ class WCFM_Affiliate_Vendor_Classification {
                 }
             }
             
-            // Luego los de exclusión (siempre con AND)
+            // Luego los de exclusión
+            // IMPORTANTE: Si filter_logic es OR y hay inclusiones, las exclusiones NO deben bloquear
+            // a usuarios que cumplan al menos una inclusión (igual que en la query SQL)
             if (!empty($meta_queries_exclude)) {
-                foreach ($meta_queries_exclude as $exclude_query) {
-                    $all_meta_queries[] = $exclude_query;
+                if ($filter_logic === 'OR' && !empty($meta_queries_include)) {
+                    // Con OR y inclusiones: NO aplicar exclusiones
+                    // El usuario aparece si cumple alguna inclusión, independientemente de exclusiones
+                    error_log('🔍 WCFM Classification: OR con inclusiones (meta_query) - Ignorando exclusiones para permitir usuarios que cumplan alguna inclusión');
+                } else {
+                    // Con AND o sin inclusiones: aplicar todas las exclusiones (restrictivo)
+                    foreach ($meta_queries_exclude as $exclude_query) {
+                        $all_meta_queries[] = $exclude_query;
+                    }
                 }
             }
             
