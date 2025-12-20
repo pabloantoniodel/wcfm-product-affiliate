@@ -340,10 +340,17 @@ class WCFM_Affiliate_Vendor_Classification {
         $filter_comercio = ($filter_comercio_raw === 'true');
         
         error_log('🔍 WCFM Classification: Buscando clientes - Search: "' . $search . '" - Página: ' . $page . ' - Orden: ' . $order_by);
-        // Log específico para debugging del usuario latendetadelbotanic
-        if (stripos($search, 'latendetadelbotanic') !== false) {
-            error_log('🔍 DEBUG latendetadelbotanic: Búsqueda detectada - Search: "' . $search . '"');
-        }
+            // Log específico para debugging del usuario latendetadelbotanic
+            if (stripos($search, 'latendetadelbotanic') !== false) {
+                error_log('🔍 DEBUG latendetadelbotanic: Búsqueda detectada - Search: "' . $search . '"');
+                error_log('🔍 DEBUG latendetadelbotanic: Filtros recibidos - revisado: ' . ($filter_revisado ? 'true' : 'false') . 
+                          ', contrato: ' . ($filter_contrato ? 'true' : 'false') . 
+                          ', interesa: ' . ($filter_interesa ? 'true' : 'false') . 
+                          ', en_espera: ' . ($filter_en_espera ? 'true' : 'false') . 
+                          ', no_interesa: ' . ($filter_no_interesa ? 'true' : 'false') . 
+                          ', comercial: ' . ($filter_comercial ? 'true' : 'false') . 
+                          ', comercio: ' . ($filter_comercio ? 'true' : 'false'));
+            }
         error_log('🔍 WCFM Classification: Valores RAW recibidos - revisado: "' . $filter_revisado_raw . '" (tipo: ' . gettype($filter_revisado_raw) . ')' . 
                   ', contrato: "' . $filter_contrato_raw . '"' . 
                   ', interesa: "' . $filter_interesa_raw . '"' . 
@@ -528,6 +535,13 @@ class WCFM_Affiliate_Vendor_Classification {
             error_log('🔍 WCFM Classification: Query SQL completa - Search: ' . (!empty($search) ? 'SÍ' : 'NO') . 
                       ', Filtros: ' . (!empty($filter_where) ? 'SÍ (' . $total_filter_conditions . ')' : 'NO') . 
                       ', Orden: ' . $order_by);
+            // Log específico para debugging del usuario latendetadelbotanic
+            if (stripos($search, 'latendetadelbotanic') !== false) {
+                error_log('🔍 DEBUG latendetadelbotanic: Query completa - filter_where: ' . $filter_where);
+                error_log('🔍 DEBUG latendetadelbotanic: filter_conditions_include: ' . print_r($filter_conditions_include, true));
+                error_log('🔍 DEBUG latendetadelbotanic: filter_conditions_exclude: ' . print_r($filter_conditions_exclude, true));
+                error_log('🔍 DEBUG latendetadelbotanic: filter_comercio: ' . ($filter_comercio ? 'true' : 'false') . ', filter_comercial: ' . ($filter_comercial ? 'true' : 'false'));
+            }
             
             // Query para obtener total (sin LIMIT)
             $total_query = "
