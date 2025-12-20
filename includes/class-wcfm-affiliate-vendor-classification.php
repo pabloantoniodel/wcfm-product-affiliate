@@ -431,14 +431,14 @@ class WCFM_Affiliate_Vendor_Classification {
                 // Comercial: incluir los que tienen '1' o NULL (por defecto es true si no existe)
                 $filter_conditions_include[] = "(um_comercial.meta_value = '1' OR um_comercial.meta_value IS NULL OR um_comercial.meta_value = '')";
             } else {
-                // Excluir los comerciales: mostrar solo los que tienen '0'
+                // Si está desmarcado, mostrar solo los que NO son comerciales (tienen '0')
                 $filter_conditions_exclude[] = "(um_comercial.meta_value = '0')";
             }
             if ($filter_comercio) {
                 // Comercio: incluir los que tienen '1' o NULL (por defecto es true si no existe)
                 $filter_conditions_include[] = "(um_comercio.meta_value = '1' OR um_comercio.meta_value IS NULL OR um_comercio.meta_value = '')";
             } else {
-                // Excluir los comercio: mostrar solo los que tienen '0'
+                // Si está desmarcado, mostrar solo los que NO son comercio (tienen '0')
                 $filter_conditions_exclude[] = "(um_comercio.meta_value = '0')";
             }
             
@@ -792,7 +792,7 @@ class WCFM_Affiliate_Vendor_Classification {
                     )
                 );
             } else {
-                // Excluir los comerciales: mostrar solo los que tienen '0'
+                // Si está desmarcado, mostrar solo los que NO son comerciales (tienen '0')
                 $meta_queries_exclude[] = array(
                     'key' => 'wcfm_is_comercial',
                     'value' => '0',
@@ -819,7 +819,7 @@ class WCFM_Affiliate_Vendor_Classification {
                     )
                 );
             } else {
-                // Excluir los comercio: mostrar solo los que tienen '0'
+                // Si está desmarcado, mostrar solo los que NO son comercio (tienen '0')
                 $meta_queries_exclude[] = array(
                     'key' => 'wcfm_is_comercio',
                     'value' => '0',
