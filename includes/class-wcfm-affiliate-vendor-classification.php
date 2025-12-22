@@ -485,22 +485,50 @@ class WCFM_Affiliate_Vendor_Classification {
                 }
             }
             
-            // Aplicar todas las condiciones con AND
+            // IMPORTANTE: Si hay texto en el buscador, usar OR con los filtros
+            // Si NO hay texto, usar AND con los filtros según filter_logic
+            // Lógica: Si hay texto → (texto_match) OR (filtros_match)
+            //         Si NO hay texto → (filtros_match) con AND u OR según filter_logic
+            
+            // Construir WHERE para filtros
             if (!empty($all_conditions)) {
-                $filter_where = ' AND (' . implode(' AND ', $all_conditions) . ')';
-                error_log('🔍 WCFM Classification: Aplicando filtros SQL - Incluir: ' . count($filter_conditions_include) . ', Excluir: ' . count($filter_conditions_exclude) . ', Lógica: ' . $filter_logic);
-                error_log('🔍 WCFM Classification: SQL WHERE generado: ' . $filter_where);
+                $filters_condition = '(' . implode(' AND ', $all_conditions) . ')';
             } else {
+                $filters_condition = '';
+            }
+            
+            // Construir WHERE completo: Si hay texto, usar OR; si no, solo filtros
+            if (!empty($filters_condition)) {
+                // Si hay texto en el buscador, combinar con OR
+                // Si NO hay texto, aplicar solo los filtros
+                if (!empty($search)) {
+                    // Con texto: (texto_match) OR (filtros_match)
+                    $filter_where = ' AND (' . $search_where . ' OR ' . $filters_condition . ')';
+                    error_log('🔍 WCFM Classification: CON TEXTO - Usando OR: (texto) OR (filtros)');
+                } else {
+                    // Sin texto: solo filtros
+                    $filter_where = ' AND ' . $filters_condition;
+                    error_log('🔍 WCFM Classification: SIN TEXTO - Aplicando solo filtros con lógica: ' . $filter_logic);
+                }
+            } else {
+                // Sin filtros: solo aplicar búsqueda de texto si existe
+                if (!empty($search)) {
+                    $filter_where = ' AND ' . $search_where;
+                } else {
+                    $filter_where = '';
+                }
                 error_log('🔍 WCFM Classification: NO hay filtros activos - Mostrando TODOS los vendedores');
             }
+            
+            error_log('🔍 WCFM Classification: Aplicando filtros SQL - Incluir: ' . count($filter_conditions_include) . ', Excluir: ' . count($filter_conditions_exclude) . ', Lógica: ' . $filter_logic);
+            error_log('🔍 WCFM Classification: SQL WHERE generado: ' . $filter_where);
             
             // Construir ORDER BY según el criterio seleccionado
             $order_clause = self::build_order_clause($order_by);
             
             // Query para obtener IDs
-            // IMPORTANTE: La búsqueda de texto (search_where) y el orden (order_clause) 
-            // siempre se aplican con AND respecto a los filtros de checkboxes
-            // Los filtros de checkboxes entre sí pueden ser AND u OR según filter_logic
+            // IMPORTANTE: Si hay texto, la búsqueda se combina con OR respecto a los filtros
+            // Si NO hay texto, solo se aplican los filtros con AND u OR según filter_logic
             $user_ids_query = "
                 SELECT DISTINCT u.ID 
                 FROM {$wpdb->users} u
@@ -541,7 +569,7 @@ class WCFM_Affiliate_Vendor_Classification {
                     AND um_comercial.meta_key = 'wcfm_is_comercial'
                 LEFT JOIN {$wpdb->usermeta} um_comercio ON u.ID = um_comercio.user_id 
                     AND um_comercio.meta_key = 'wcfm_is_comercio'
-                WHERE {$search_where}
+                WHERE 1=1
                 {$filter_where}
                 {$order_clause}
             ";
@@ -558,7 +586,7 @@ class WCFM_Affiliate_Vendor_Classification {
                 error_log('🔍 DEBUG latendetadelbotanic: filter_comercio: ' . ($filter_comercio ? 'true' : 'false') . ', filter_comercial: ' . ($filter_comercial ? 'true' : 'false'));
             }
             
-            // Query para obtener total (sin LIMIT)
+            // Query para obtener total (sin LIMIT) - Misma lógica: si hay texto, OR; si no, solo filtros
             $total_query = "
                 SELECT COUNT(DISTINCT u.ID) 
                 FROM {$wpdb->users} u
@@ -599,7 +627,7 @@ class WCFM_Affiliate_Vendor_Classification {
                     AND um_comercial.meta_key = 'wcfm_is_comercial'
                 LEFT JOIN {$wpdb->usermeta} um_comercio ON u.ID = um_comercio.user_id 
                     AND um_comercio.meta_key = 'wcfm_is_comercio'
-                WHERE {$search_where}
+                WHERE 1=1
                 {$filter_where}
             ";
             
